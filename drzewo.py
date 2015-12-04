@@ -19,7 +19,6 @@ class Node():
             m= [m]
         if len(m)== 1 or self.check_last(m): #sprawdzenie czy wszystkie klasyfikacje sa
             self.classification = (1, m[0][-1] )
-            print self.classification
         elif len(m) == 2: #pozostaja dwa wiec ciezko rozroznic na podstawie indexu Giniego.
             i = 0
             while m[0][i] == m[1][i]:
@@ -58,7 +57,7 @@ class Node():
             
 
     def check_last(self, m):
-        print 'm', m
+        #print 'm', m
         tmp = m[0][-1]
         for x in m:
             if x[-1] != tmp:
@@ -158,12 +157,18 @@ class Node():
     
     def go_through (self, m):
         """Funkcja dostaje wektor z wartosciami przy pomocy ktorych musi zostac klasyfikowany dojendej z dowch grup"""
-        if self.probability != 0:
+        if self.classification != None:
             return self.classification
-        elif m[self.nr_index] >= self.value:
-            self.left.go_through(m)
-        elif m[self.nr_index] < self.value:
-            self.right.go_through(m)
+        if type(self.nr_index):
+            if m[self.nr_index] >= self.value:
+                return self.left.go_through(m)
+            elif m[self.nr_index] < self.value:
+                return self.right.go_through(m)
+        elif not type(self.nr_index):
+            if m[self.nr_index] == self.value:
+                return self.left.go_through(m)
+            elif m[self.nr_index] != self.value:
+                return self.right.go_through(m)
         else:
             return "Nie idzie"
 
@@ -187,7 +192,8 @@ class Tree():
     def go_through(self, m):
         print self.root.go_through(m)
 
-test = [[6.0, '12aaa', 54, True], [-1, '00000iiii',0, False]]
+test = [[6.0, 12, 54, True], [-1, 12 ,0, False]]
 
 d =Tree()
 d.insert(test)
+d.go_through( [4,11,54])
