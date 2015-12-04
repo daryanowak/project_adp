@@ -72,30 +72,35 @@ class Node():
     def index_Giniego(self, matrix): #OUT ( minimalny index Giniego, nr. kolumny dla ktorej parametr jest minimalny, wartosc graniczna)
         """Funkcja ktora ma liczyc index Giniego dla wybranej macierzy, podanej w postaci listy list.
             OUT tuple w postaci ( minimalny index Giniego, nr. kolumny dla ktorej parametr jest minimalny, wartosc graniczna)"""
+        global types
         j = 0
         mini = (1,0,0)
         while j <= len(matrix[0]) -2:
-            tmpl = [ [x[j], x[-1]] for x in matrix]
-            tmpl.sort(key = lambda x : x[0]) # sort only by 1st argument of list inside the list
-            mini_tmp = self.index_Giniego_wektor_liczby([x[1] for x in tmpl ])
-            print mini_tmp , j
+            if types[j] == 0:
+                tmpl = [ [x[j], x[-1]] for x in matrix]
+                mini_tmp = self.index_Giniego_wektor_liczby(tmpl)
+            else:
+                tmpl = [ [x[j], x[-1]] for x in matrix]
+                mini_tmp = self.index_Giniego_wektor_str(tmpl)
             if mini[0] > mini_tmp[0]:
-                mini = (mini_tmp[0], j, matrix[mini_tmp[1]][j] )
+                mini = (mini_tmp[0], j, mini_tmp[1])
             j += 1
         return mini
             
-    def index_Giniego_wektor_liczby(self, wektor):
+    def index_Giniego_wektor_liczby(self, wektorI):
         """Dostaje wektor klasyfikacji posortowanych po wartosciach,
             tzn. dostaje ostatnia kolumne w ktorej znajduja sie predykcje
             OUT minimalny index wraz z pozycja"""
-        n = len(wektor)
-        warianty = [wektor.count( wektor[0])]
+        wektor.sort(key = lambda x : x[0])
+        classifications = [x[1] for x in wektor ]
+        n = len(classifications)
+        warianty = [classifications.count( classifications[0])]
         warianty.append(n - warianty[0])
         mini = (1 , None) # (minimalny index Giniego, pozycja na liscie)
         i = 0
         tmpl =[0,0]
         while i < n-1 :
-            if wektor [i] == wektor [0]:
+            if classifications [i] == classifications [0]:
                 tmpl[0] += 1
             else:
                 tmpl[1] += 1
@@ -105,13 +110,44 @@ class Node():
             r0 = (warianty[0] - tmpl[0])/(n-j)
             r1 = (warianty[1] - tmpl[1])/(n-j)
             tmp = j/n * ( l0 * ( 1- l0) + l1 * ( 1- l1 ) ) + (n-j)/n * ( r0 * ( 1- r0) + r1 * ( 1-r1) )
-            print 'tmp', tmp, 'i', i, 'j', j  , 'n', n ,'l', l0, l1 , 'r', r0, r1 
             if mini[0] > tmp:
-                mini = (tmp, i)
+                mini = (tmp, wektor[i])
             if tmp == 0:
                 break
             i += 1
         return mini
+
+    def creat_dict (self, wektor):
+        warianty = {}
+        for x in wektor:
+            if x[0] not in warianty:
+                warianty[x[0] = [0 ,0]
+            if x[1] == wektor[0][1]:
+                warianty[x[0]][0] += 1
+            else:
+                warianty[x[0]][1] +=1
+        return warianty
+
+    def index_Giniego_str (self, wektor):
+        warianty = self.creat_dict(wektor)
+        Count0 = [x[1] for x in wektor].count(wektor[0] )
+        Count1 = len(wektor) - Count[0]
+        mini = (1, None)
+        tmpl =[0,0]
+        n= len(wektor)
+        for x in warianty:
+            j = b[x][0] + b[x][1]
+            l0 = b[x][0]/j
+            l1 = b[x][1]/j
+            r0 = (Count0 - b[x][0])/(n-j)
+            r1 = (Count1 - b[x][1])/(n-j)
+            tmp = j/n * ( l0 * ( 1- l0) + l1 * ( 1- l1 ) ) + (n-j)/n * ( r0 * ( 1- r0) + r1 * ( 1-r1) )
+            if mini[0] > tmp:
+                mini = (tmp, x)
+            if tmp == 0:
+                break
+        return mini
+        
     
     def go_through (self, m):
         """Funkcja dostaje wektor z wartosciami przy pomocy ktorych musi zostac klasyfikowany dojendej z dowch grup"""
@@ -130,7 +166,17 @@ class Tree():
         self.root = Node (self, None, None, None)
 
     def insert (self, matrix):
-        print 'halo'
+        global types # (0- int or float, 1- bool, 2-str)
+        types = []
+        for lines in matrix:
+            for col in lines:
+                value = 1
+                if type(x) == str:
+                    value = 2
+                    break
+                elif type(x) == float or type(x) == int:
+                    value == 0
+            types.append(Value)
         self.root.insert(matrix)
     
     def go_through(self, m):
