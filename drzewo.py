@@ -121,7 +121,7 @@ class Node():
         warianty = {}
         for x in wektor:
             if x[0] not in warianty:
-                warianty[x[0] = [0 ,0]
+                warianty[x[0]] = [0 ,0]
             if x[1] == wektor[0][1]:
                 warianty[x[0]][0] += 1
             else:
@@ -169,14 +169,14 @@ class Tree():
         global types # (0- int or float, 1- bool, 2-str)
         types = []
         for lines in matrix:
-            for col in lines:
+            for x in lines:
                 value = 1
                 if type(x) == str:
                     value = 2
                     break
                 elif type(x) == float or type(x) == int:
                     value == 0
-            types.append(Value)
+            types.append(value)
         self.root.insert(matrix)
     
     def go_through(self, m):
