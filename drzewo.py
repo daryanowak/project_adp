@@ -41,7 +41,7 @@ class Node():
             index_G = self.index_Giniego(m)
             self.value = index_G[2]
             self.nr_index = index_G[1]
-            if types(index_G[1]):
+            if types[index_G[1]]:
                 left_branch = [x for x in m if x[index_G[1]] < index_G[2] ]
                 right_branch = [x for x in m if x[index_G[1]] >= index_G[2] ]
             else:
@@ -53,7 +53,7 @@ class Node():
             self.left = Node(None, None, None, None )
             self.right = Node(None, None, None, None )
             return self.left.insert(left_branch), self.right.insert(right_branch)
-        print "koniec"
+        #print "koniec"
             
 
     def check_last(self, m):
