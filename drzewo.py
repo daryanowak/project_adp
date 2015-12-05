@@ -137,7 +137,7 @@ class Node():
     def index_Giniego_str (self, wektor):
         warianty = self.creat_dict(wektor)
         Count0 = [x[1] for x in wektor].count(wektor[0] )
-        Count1 = len(wektor) - Count[0]
+        Count1 = len(wektor) - Count0
         mini = (1, None)
         tmpl =[0,0]
         n= len(wektor)
@@ -275,9 +275,15 @@ class RandomForestClassifier():
         for row in range(len(M)):
             input_decision_list.append(M[row][-1])
             output_decision_list.append(new_M[row][-1])
-
-        a = input_decision_list.count(True)/input_decision_list.count(False)
-        b = output_decision_list.count(True)/output_decision_list.count(False)
+        
+        try:
+            a = input_decision_list.count(True)/input_decision_list.count(False)
+        except (ZeroDivisionError):
+            print "The training set is unvalid, contain only one decision class"
+        try:
+            b = output_decision_list.count(True)/output_decision_list.count(False)
+        except (ZeroDivisionError):
+            return False # it will result in new random matrix
 
         decision_proportion = abs(a-b)/a
 
