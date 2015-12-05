@@ -176,7 +176,7 @@ class Tree():
 
     def __init__(self):
         self.root = Node (self, None, None, None)
-        self.oober = None
+        self.ooberr = None
         self.out_of_bag = None
 
     def insert (self, matrix):
@@ -231,8 +231,9 @@ class RandomForestClassifier():
         counter = 0
         while counter < 11:
             counter += 1
+            #print self.random_forest
             self.random_forest.append(self.random_submatrix(M)) 
-        while self.ooberr(self.random_forest, M) > 0.01: # DODAC W DRZEWIE!!!!!
+        while self.find_ooberr(M) > 0.01: # DODAC W DRZEWIE!!!!!
             self.random_forest.append(self.random_submatrix(M)) 
         print "Random Forest was build, has %d trees" % len(self.random_forest)
 
@@ -249,20 +250,19 @@ class RandomForestClassifier():
 
         for row, row_random in enumerate(m_random):
             new_M[row][-1] = M[row_random][-1]
-            print "row", row, new_M
             for column,column_random in enumerate(n_random):
                 new_M[row][column] = M[row_random][column_random]
 
         if self.check_decision_proportion(M,new_M): 
 
-            print "new_M with good decision proportion was created",new_M  
+            #print "new_M with good decision proportion was created",new_M  
             tree = Tree()
             tree.insert(new_M)
             tree.out_of_bag = out_of_bag #ATRYBUT DO KLASY tree
+            print "tree", tree
             return tree
-
-        else:
-            self.random_submatrix(M)            
+        print "powtarza wspolczynnik"
+        self.random_submatrix(M)            
         
 
     def check_decision_proportion(self, M, new_M):
@@ -275,19 +275,22 @@ class RandomForestClassifier():
         for row in range(len(M)):
             input_decision_list.append(M[row][-1])
             output_decision_list.append(new_M[row][-1])
-        
+        print "input_decision_list", input_decision_list
+        print "output_decision_list", output_decision_list
         try:
             if input_decision_list.count(True) == 0:
                 print "The training set is unvalid, contain only one decision class False"
                 return False
-            a = input_decision_list.count(True)/input_decision_list.count(False)
+            a = float(input_decision_list.count(True))/float(input_decision_list.count(False))
+            print "a", a
         except (ZeroDivisionError):
             print "The training set is unvalid, contain only one decision class True"
         try:
             if output_decision_list.count(True) == 0:
                 print "The output set is unvalid, contain only one decision class True"
                 return False
-            b = output_decision_list.count(True)/output_decision_list.count(False)
+            b = float(output_decision_list.count(True))/float(output_decision_list.count(False))
+            print "b",b
         except (ZeroDivisionError):
             return False # it will result in new random matrix
 
@@ -300,12 +303,13 @@ class RandomForestClassifier():
         return True
         
 
-    def ooberr(self, random_forest, M):
-
+    def find_ooberr(self, M):
+        print self.random_forest
         for drzewo in self.random_forest:
             if drzewo.ooberr == None:
                 tree_dict = {} #DODAC DO ATRYBUTOW DRZEWA
                 for row in range(len(M)): 
+                    print "out_of_bag", drzewo.out_of_bag
                     if row in drzewo.out_of_bag:
                         decision = drzewo.go_through(row[:-1]) #wiersz podawany bez decyzji
                         right_decision = row[-1]
@@ -320,6 +324,6 @@ class RandomForestClassifier():
                 
                 self.ooberr = sum_f / sum_ft
 
-        oober_10 = self.random_forest[-10].ooberr - sum([drzewo.ooberr for drzewo in random_forest[-10:]])/10
+        oober_10 = self.random_forest[-10].ooberr - sum([drzewo.ooberr for drzewo in self.random_forest[-10:]])/10
 
         return oober_10
