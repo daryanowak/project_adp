@@ -231,9 +231,8 @@ class RandomForestClassifier():
         counter = 0
         while counter < 11:
             counter += 1
-            #print self.random_forest
             self.random_forest.append(self.random_submatrix(M)) 
-        while self.find_ooberr(M) > 0.01: # DODAC W DRZEWIE!!!!!
+        while self.find_ooberr(M) > 10: # DODAC W DRZEWIE!!!!!
             self.random_forest.append(self.random_submatrix(M)) 
         print "Random Forest was build, has %d trees" % len(self.random_forest)
 
@@ -259,10 +258,10 @@ class RandomForestClassifier():
             tree = Tree()
             tree.insert(new_M)
             tree.out_of_bag = out_of_bag #ATRYBUT DO KLASY tree
-            print "tree", tree
             return tree
-        print "powtarza wspolczynnik"
-        self.random_submatrix(M)            
+        
+        else:
+            self.random_submatrix(M)            
         
 
     def check_decision_proportion(self, M, new_M):
@@ -275,29 +274,20 @@ class RandomForestClassifier():
         for row in range(len(M)):
             input_decision_list.append(M[row][-1])
             output_decision_list.append(new_M[row][-1])
-        print "input_decision_list", input_decision_list
-        print "output_decision_list", output_decision_list
-        try:
-            if input_decision_list.count(True) == 0:
-                print "The training set is unvalid, contain only one decision class False"
-                return False
-            a = float(input_decision_list.count(True))/float(input_decision_list.count(False))
-            print "a", a
-        except (ZeroDivisionError):
-            print "The training set is unvalid, contain only one decision class True"
-        try:
-            if output_decision_list.count(True) == 0:
-                print "The output set is unvalid, contain only one decision class True"
-                return False
-            b = float(output_decision_list.count(True))/float(output_decision_list.count(False))
-            print "b",b
-        except (ZeroDivisionError):
-            return False # it will result in new random matrix
+
+        if input_decision_list.count(True)==0 or input_decision_list.count(False) == 0:
+            print "The training set is unvalid, contain only one decision class"
+            return False
+        a = float(input_decision_list.count(True))
+       
+        if output_decision_list.count(True)==0 or output_decision_list.count(False) == 0 :
+            print "The output set is unvalid, contain only one decision class"
+            return False
+        b = float(output_decision_list.count(True))
 
         decision_proportion = abs(a-b)/a
 
         if decision_proportion >= 0.5:
-            print decision_proportion
             return False
 
         return True
