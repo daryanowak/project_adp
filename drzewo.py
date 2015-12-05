@@ -277,10 +277,16 @@ class RandomForestClassifier():
             output_decision_list.append(new_M[row][-1])
         
         try:
+            if input_decision_list.count(True) == 0:
+                print "The training set is unvalid, contain only one decision class False"
+                return False
             a = input_decision_list.count(True)/input_decision_list.count(False)
         except (ZeroDivisionError):
-            print "The training set is unvalid, contain only one decision class"
+            print "The training set is unvalid, contain only one decision class True"
         try:
+            if output_decision_list.count(True) == 0:
+                print "The output set is unvalid, contain only one decision class True"
+                return False
             b = output_decision_list.count(True)/output_decision_list.count(False)
         except (ZeroDivisionError):
             return False # it will result in new random matrix
