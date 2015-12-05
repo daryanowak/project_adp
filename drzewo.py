@@ -142,11 +142,11 @@ class Node():
         tmpl =[0,0]
         n= len(wektor)
         for x in warianty:
-            j = b[x][0] + b[x][1]
-            l0 = b[x][0]/j
-            l1 = b[x][1]/j
-            r0 = (Count0 - b[x][0])/(n-j)
-            r1 = (Count1 - b[x][1])/(n-j)
+            j = warianty[x][0] + warianty[x][1]
+            l0 = warianty[x][0]/j
+            l1 = warianty[x][1]/j
+            r0 = (Count0 - warianty[x][0])/(n-j)
+            r1 = (Count1 - warianty[x][1])/(n-j)
             tmp = j/n * ( l0 * ( 1- l0) + l1 * ( 1- l1 ) ) + (n-j)/n * ( r0 * ( 1- r0) + r1 * ( 1-r1) )
             if mini[0] > tmp:
                 mini = (tmp, x)
