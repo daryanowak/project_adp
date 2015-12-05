@@ -87,7 +87,7 @@ class Node():
                 mini_tmp = self.index_Giniego_wektor_liczby(tmpl)
             else:
                 tmpl = [ [x[j], x[-1]] for x in matrix]
-                mini_tmp = self.index_Giniego_wektor_str(tmpl)
+                mini_tmp = self.index_Giniego_str(tmpl)
             if mini[0] > mini_tmp[0]:
                 mini = (mini_tmp[0], j, mini_tmp[1])
             j += 1
@@ -176,6 +176,8 @@ class Tree():
 
     def __init__(self):
         self.root = Node (self, None, None, None)
+        self.oober = None
+        self.out_of_bag = None
 
     def insert (self, matrix):
         global types # (True if int or float; False- str or bool)
@@ -192,8 +194,120 @@ class Tree():
     def go_through(self, m):
         print self.root.go_through(m)
 
-test = [[6.0, 12, 54, True], [-1, 12 ,0, False]]
 
-d =Tree()
-d.insert(test)
-d.go_through( [4,11,54])
+class RandomForestClassifier():
+
+    def __init__(self, n_features):
+        self.n_features = n_features
+        self.random_forest = []
+    
+    def fit(self, X):
+
+        """uczy klasyfikator na zbiorze treningowym"""
+
+        self.random_forest = self.build_random_forest(X)
+
+    def predict(self, X):
+
+        """przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m. 
+    Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest 
+    i generuje najbardziej prawdopodobna decyzje. Wynikiem jest wektor dlugosci macierzy wejsciowej."""
+
+        
+        final_decision = []
+        for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
+            decyzje =[tree.go_through(v) for tree in self.random_forest] 
+            if decyzje.count(True)/len(decyzje) > 0.5:
+                final_decision.append(True)
+            else:
+                final_decision.append(False)
+        print "final_decision for input matrix is", final_decision          
+        return final_decision
+
+
+    
+    def build_random_forest(self, M):
+
+        counter = 0
+        while counter < 11:
+            counter += 1
+            self.random_forest.append(self.random_submatrix(M)) 
+        while self.ooberr(self.random_forest, M) > 0.01: # DODAC W DRZEWIE!!!!!
+            self.random_forest.append(self.random_submatrix(M)) 
+        print "Random Forest was build, has %d trees" % len(self.random_forest)
+
+
+
+    def random_submatrix(self, M):
+
+        """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix). Losowanie wierszy ze zwracaniem, losowanie kolumn bez zwracania zachowujac wysokosc macierzy"""
+
+        new_M = [[None for i in range(self.n_features + 1)] for j in range(len(M))]
+        m_random = np.random.choice(range(len(M)), size = len(M), replace = True)
+        out_of_bag = list(set(range(len(M)))-set(m_random)) 
+        n_random = np.random.choice(range(len(M[0])-1), size = self.n_features, replace = False)
+
+        for row, row_random in enumerate(m_random):
+            new_M[row][-1] = M[row_random][-1]
+            print "row", row, new_M
+            for column,column_random in enumerate(n_random):
+                new_M[row][column] = M[row_random][column_random]
+
+        if self.check_decision_proportion(M,new_M): 
+
+            print "new_M with good decision proportion was created",new_M  
+            tree = Tree()
+            tree.insert(new_M)
+            tree.out_of_bag = out_of_bag #ATRYBUT DO KLASY tree
+            return tree
+
+        else:
+            self.random_submatrix(M)            
+        
+
+    def check_decision_proportion(self, M, new_M):
+
+        """Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.  Zwraca True jesli proporcja pomiedzy decyzjami jest wieksza rowna 0.5"""
+
+        input_decision_list = []
+        output_decision_list = []
+
+        for row in range(len(M)):
+            input_decision_list.append(M[row][-1])
+            output_decision_list.append(new_M[row][-1])
+
+        a = input_decision_list.count(True)/input_decision_list.count(False)
+        b = output_decision_list.count(True)/output_decision_list.count(False)
+
+        decision_proportion = abs(a-b)/a
+
+        if decision_proportion >= 0.5:
+            print decision_proportion
+            return False
+
+        return True
+        
+
+    def ooberr(self, random_forest, M):
+
+        for drzewo in self.random_forest:
+            if drzewo.ooberr == None:
+                tree_dict = {} #DODAC DO ATRYBUTOW DRZEWA
+                for row in range(len(M)): 
+                    if row in drzewo.out_of_bag:
+                        decision = drzewo.go_through(row[:-1]) #wiersz podawany bez decyzji
+                        right_decision = row[-1]
+                        tree_dict[row] = [1-abs(right_decision-decision), abs(right_decision-decision)]
+
+                sum_ft = 0
+                sum_f = 0
+
+                for key in tree_dict:
+                    sum_f += tree_dict[key][1]
+                    sum_ft = sum_ft + tree_dict[key][1] + tree_dict[key][0]
+                
+                self.ooberr = sum_f / sum_ft
+
+        oober_10 = self.random_forest[-10].ooberr - sum([drzewo.ooberr for drzewo in random_forest[-10:]])/10
+
+        return oober_10
