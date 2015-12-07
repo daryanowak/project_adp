@@ -228,6 +228,8 @@ class RandomForestClassifier():
     
     def build_random_forest(self, M):
 
+        """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
+
         counter = 0
         while counter < 11:
             counter += 1
@@ -240,19 +242,22 @@ class RandomForestClassifier():
 
     def random_submatrix(self, M):
 
-        """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix). Losowanie wierszy ze zwracaniem, losowanie kolumn bez zwracania zachowujac wysokosc macierzy"""
+        """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix). Losowanie wierszy ze zwracaniem, losowanie kolumn bez zwracania zachowujac wysokosc macierzy.
+        Wylosowane m_random i n_random to odpowiednio indexy wierszy i kolumn macierzy pierwotnej"""
 
-        new_M = [[None for i in range(self.n_features + 1)] for j in range(len(M))]
-        m_random = np.random.choice(range(len(M)), size = len(M), replace = True)
+        new_M = [[None for i in range(self.n_features + 1)] for j in range(len(M))] #generuje pusta tablice, w ktorej znajda sie losowo wybrane wiersze i kolumny
+        m_random = np.random.choice(range(len(M)), size = len(M), replace = True) #losuje wiersze nowej tablicy ze zwracaniem
         out_of_bag = list(set(range(len(M)))-set(m_random)) 
-        n_random = np.random.choice(range(len(M[0])-1), size = self.n_features, replace = False)
+        n_random = np.random.choice(range(len(M[0])-1), size = self.n_features, replace = False) #losuje kolumny nowej tablicy bez zwracania, z pominieciem kolumny decyzji [-1]
 
         for row, row_random in enumerate(m_random):
             new_M[row][-1] = M[row_random][-1]
             for column,column_random in enumerate(n_random):
-                new_M[row][column] = M[row_random][column_random]
+                new_M[row][column] = M[row_random][column_random] #buduje nowa tablice z uzyciem wylosowanych indeksow wierszy i kolumn
 
         if self.check_decision_proportion(M,new_M): 
+
+            #sprawdza podobienstwo proporcji klas decyzyjnych. Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.
 
             #print "new_M with good decision proportion was created",new_M  
             tree = Tree()
@@ -261,7 +266,7 @@ class RandomForestClassifier():
             return tree
         
         else:
-            self.random_submatrix(M)            
+            self.random_submatrix(M) #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
         
 
     def check_decision_proportion(self, M, new_M):
@@ -294,10 +299,15 @@ class RandomForestClassifier():
         
 
     def find_ooberr(self, M):
+
+        """Sprawdza stabilizacje bledu OOB. Wartosc oober_10 warunkuje zakonczenie procesu uczenia. Tworzy slownik decyzji dla kazdego drzewa,
+         gdzie przechowywana jest liczba poprawnych i blednych decyzji. Kluczem jest index testowanego wiersza, value[0] jest t_i, value[1] f_i.
+         Zwraca oober_10"""
+
         print self.random_forest
         for drzewo in self.random_forest:
             if drzewo.ooberr == None:
-                tree_dict = {}
+                tree_dict = {} 
                 for row_index in range(len(M)): 
                     print "out_of_bag", drzewo.out_of_bag
                     if row_index in drzewo.out_of_bag:
@@ -309,11 +319,11 @@ class RandomForestClassifier():
                 sum_f = 0
 
                 for key in tree_dict:
-                    sum_f += tree_dict[key][1]
-                    sum_ft = sum_ft + tree_dict[key][1] + tree_dict[key][0]
+                    sum_f += tree_dict[key][1] #suma blednych decyzji
+                    sum_ft = sum_ft + tree_dict[key][1] + tree_dict[key][0] #suma poprawnych i blednych decyzji
                 
                 self.ooberr = sum_f / sum_ft
 
-        oober_10 = self.random_forest[-10].ooberr - sum([drzewo.ooberr for drzewo in self.random_forest[-10:]])/10
+        oober_10 = self.random_forest[-10].ooberr - sum([drzewo.ooberr for drzewo in self.random_forest[-10:]])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drzew
 
         return oober_10
