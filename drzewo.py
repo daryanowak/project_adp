@@ -297,12 +297,12 @@ class RandomForestClassifier():
         print self.random_forest
         for drzewo in self.random_forest:
             if drzewo.ooberr == None:
-                tree_dict = {} #DODAC DO ATRYBUTOW DRZEWA
-                for row in range(len(M)): 
+                tree_dict = {}
+                for row_index in range(len(M)): 
                     print "out_of_bag", drzewo.out_of_bag
-                    if row in drzewo.out_of_bag:
-                        decision = drzewo.go_through(row[:-1]) #wiersz podawany bez decyzji
-                        right_decision = row[-1]
+                    if row_index in drzewo.out_of_bag:
+                        decision = drzewo.go_through(M[row_index][:-1]) #wiersz podawany bez decyzji, po przechodzeniu przez drzewo zwroci decyzje
+                        right_decision = M[row_index][-1] #znamy prawdziwa decyzje z wejsciowej macierzy
                         tree_dict[row] = [1-abs(right_decision-decision), abs(right_decision-decision)]
 
                 sum_ft = 0
