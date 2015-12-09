@@ -1,5 +1,3 @@
-import numpy as np
-
 class Node():
     
     def __init__(self, left, right, nr_index, value):
@@ -15,10 +13,9 @@ class Node():
         Sposob podzialu na podstawie indeksu Giniego"""
         if len(m) == 0 :
             return
-        if type(m[0]) != list:
-            m= [m]
         if len(m)== 1 or self.check_last(m): #sprawdzenie czy wszystkie klasyfikacje sa
-            self.classification = (1, m[0][-1] )
+            self.classification = m[0][-1]
+            return
         elif len(m) == 2: #pozostaja dwa wiec ciezko rozroznic na podstawie indexu Giniego.
             i = 0
             while m[0][i] == m[1][i]:
@@ -27,18 +24,17 @@ class Node():
             self.value = m[0][i]
             self.left = Node(None, None, None,None )
             self.right = Node(None, None, None , None)
-            return self.left.insert(m[0]), self.right.insert(m[1])
+            self.left.insert([m[0]])
+            self.right.insert([m[1]])
         elif self.check_identity(m): #wszystkie cechy takie same ale rozna klasyfikacja
             counting = [x[-1] for x in m].count(m[0][-1]) / float(len(m))
             if counting > 0.5:
-                 self.classification = ( counting, m[0][-1] )
+                 self.classification = m[0][-1]
             else:
-                for x in m:
-                    if x[-1] != m[0][-1]:
-                        self.classification = (counting, x[-1] )
-                        break 
+                self.classification = not m[0][-1]
+            return
         else:
-            index_G = self.index_Giniego(m)
+            index_G = self.index_Giniego(m)  #OUT ( minimalny index Giniego, nr. kolumny dla ktorej parametr jest minimalny, wartosc graniczna)
             self.value = index_G[2]
             self.nr_index = index_G[1]
             if types[index_G[1]]:
@@ -47,17 +43,16 @@ class Node():
             else:
                 left_branch = [x for x in m if x[index_G[1]] == index_G[2] ]
                 right_branch = [x for x in m if x[index_G[1]] != index_G[2] ]
-            #print m, '\n', left_branch, right_branch, '\n'
             self.nr_index = index_G[1]
             self.value = index_G[2]
             self.left = Node(None, None, None, None )
             self.right = Node(None, None, None, None )
-            return self.left.insert(left_branch), self.right.insert(right_branch)
-        #print "koniec"
+            self.left.insert(left_branch)
+            self.right.insert(right_branch)
+        return False # na wszelki wypadek
             
 
     def check_last(self, m):
-        #print 'm', m
         tmp = m[0][-1]
         for x in m:
             if x[-1] != tmp:
@@ -82,18 +77,18 @@ class Node():
         j = 0
         mini = (1,0,0)
         while j <= len(matrix[0]) -2:
-            if types[j]:
-                tmpl = [ [x[j], x[-1]] for x in matrix]
-                mini_tmp = self.index_Giniego_wektor_liczby(tmpl)
-            else:
-                tmpl = [ [x[j], x[-1]] for x in matrix]
-                mini_tmp = self.index_Giniego_str(tmpl)
-            if mini[0] > mini_tmp[0]:
-                mini = (mini_tmp[0], j, mini_tmp[1])
+            tmpl = [ [x[j], x[-1]] for x in matrix]
+            if not self.check_identity(tmpl):
+                if types[j]:
+                    mini_tmp = self.index_Giniego_wektor_liczby(tmpl)
+                else:
+                    mini_tmp = self.index_Giniego_str(tmpl)
+                if mini[0] > mini_tmp[0]:
+                    mini = (mini_tmp[0], j, mini_tmp[1])
             j += 1
         return mini
             
-    def index_Giniego_wektor_liczby(self, wektorI):
+    def index_Giniego_wektor_liczby(self, wektor):
         """Dostaje wektor klasyfikacji posortowanych po wartosciach,
             tzn. dostaje ostatnia kolumne w ktorej znajduja sie predykcje
             OUT minimalny index wraz z pozycja"""
@@ -106,7 +101,7 @@ class Node():
         i = 0
         tmpl =[0,0]
         while i < n-1 :
-            if classifications [i] == classifications [0]:
+            if classifications [i]:
                 tmpl[0] += 1
             else:
                 tmpl[1] += 1
@@ -128,7 +123,7 @@ class Node():
         for x in wektor:
             if x[0] not in warianty:
                 warianty[x[0]] = [0 ,0]
-            if x[1] == wektor[0][1]:
+            if x[1]:
                 warianty[x[0]][0] += 1
             else:
                 warianty[x[0]][1] +=1
@@ -136,13 +131,15 @@ class Node():
 
     def index_Giniego_str (self, wektor):
         warianty = self.creat_dict(wektor)
-        Count0 = [x[1] for x in wektor].count(wektor[0] )
+        Count0 = [x[1] for x in wektor].count(True)
         Count1 = len(wektor) - Count0
         mini = (1, None)
         tmpl =[0,0]
         n= len(wektor)
         for x in warianty:
             j = warianty[x][0] + warianty[x][1]
+            if j == n:
+                return (1, None)
             l0 = warianty[x][0]/j
             l1 = warianty[x][1]/j
             r0 = (Count0 - warianty[x][0])/(n-j)
@@ -159,16 +156,16 @@ class Node():
         """Funkcja dostaje wektor z wartosciami przy pomocy ktorych musi zostac klasyfikowany dojendej z dowch grup"""
         if self.classification != None:
             return self.classification
-        if type(self.nr_index):
+        if types[self.nr_index]:
             if m[self.nr_index] >= self.value:
-                return self.left.go_through(m)
+                self.left.go_through(m)
             elif m[self.nr_index] < self.value:
-                return self.right.go_through(m)
-        elif not type(self.nr_index):
+                self.right.go_through(m)
+        elif not types[self.nr_index]:
             if m[self.nr_index] == self.value:
-                return self.left.go_through(m)
+                self.left.go_through(m)
             elif m[self.nr_index] != self.value:
-                return self.right.go_through(m)
+                self.right.go_through(m)
         else:
             return "Nie idzie"
 
