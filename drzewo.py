@@ -1,3 +1,5 @@
+import numpy as np
+
 class Node():
     
     def __init__(self, left, right, nr_index, value):
