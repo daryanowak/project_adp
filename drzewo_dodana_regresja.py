@@ -32,22 +32,23 @@ class Tree():
         self.ooberr = None
         self.out_of_bag = None
 
+
     def insert(self, node):
         self.createNodes(node)
 
-
     def createNodes(self, node):
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
-            node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji 
-            #print "leaf was created with rows", node.rows, node.decision, node.left
+            node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
+            #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
+            print "leaf was created with rows", node.rows, node.decision, node.left
             return 
         #zakladamy ze jesli criterium zwraca krotke to jest mozliwy podzial na dwa nody
         node.indexes = self.criterium(node.rows, node.random_features) # each time new tree has new list_of_permuted_rows  (row, column, value)
         node.left = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size = n_features, replace = False) )
         node.right = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size = n_features, replace = False) )
         #przechowywane w root jako indexes
-        selected_feature_column = node.indexes[1] 
-        value_in_node = node.indexes[2]
+        selected_feature_column = node.indexes[1] #kolumna
+        value_in_node = node.indexes[2] #wartosc wg ktorej dzielimy
 
         for row in node.rows:
             if self.compare(selected_feature_column, self.permutated_matrix[row][selected_feature_column], value_in_node): #if true go left else go right
@@ -60,9 +61,9 @@ class Tree():
 
     def criterium(self, rows, columns):
         if called_class == "regression":
-            self.rss(rows, columns)
+            return self.rss(rows, columns)
         elif called_class == "classification":
-            self.gini(rows, columns)
+            return self.gini(rows, columns)
 
     def gini(self, rows, features):
         node_decisions = [self.permutated_matrix[row][-1] for row in rows]
@@ -203,7 +204,7 @@ class RandomForestClassifier():
 
     def fit(self, X):
         """uczy klasyfikator na zbiorze treningowym"""
-        global called_class 
+        global called_class #
         called_class = "classification"
         global n_features
         global input_features_type 
@@ -219,19 +220,19 @@ class RandomForestClassifier():
         for row in X:
             for column in row[:-1]:
                 if type(row[column]) == int or type(row[column]) == float:
-                    feature_type_matrix = False
+                    feature_type_matrix = False #zmienne typu liczbowego w kolumnie
                 else:
-                    feature_type_matrix = True
+                    feature_type_matrix = True #zmienne typu wyliczeniowwgo w kolumnie
 
         list_of_features = []
         for column in range(len(X[0]) - 1):
             summ = 0
-            for row in range(len(X)):
+            for row in range(len(X)): #sprawdzenie typu wartosci w kolumnach, suma wartosci True i False w kolumnach
                 summ += X[row][column]
-            if summ == 0:
+            if summ == 0: #kolumna typu liczbowego (suma False)
                 list_of_features.append("number")
             else:
-                list_of_features.append("mixed")
+                list_of_features.append("mixed") #kolumna typu wyliczeniowego (suma False i True)
  
         return list_of_features
 
@@ -256,7 +257,7 @@ class RandomForestClassifier():
         counter = 0
         while counter < 11:
             counter += 1
-            self.random_forest.append(self.buildTree(input_matrix)) 
+            self.random_forest.append(self.buildTree(input_matrix))#budowanie drzewa, losowanie wierszy w buildTree 
         print self.find_ooberr(input_matrix)
         while self.find_ooberr(input_matrix) > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
             print self.find_ooberr(input_matrix)
@@ -276,12 +277,12 @@ class RandomForestClassifier():
         rows_random.sort() #losuje wiersze nowej tablicy ze zwracaniem 
         out_of_bag = list(set(range(len(input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
 
-        for row in rows_random:
+        for row in rows_random: 
             permutated_matrix.append(input_matrix[row])
 
         if self.check_decision_proportion(input_matrix, permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
-            tree.insert(tree.root)
+            tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
             #print "new tree ####################################################################" + "\n"
             #print tree.root
