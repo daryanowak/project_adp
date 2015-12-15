@@ -1,5 +1,6 @@
 import numpy as np
 import itertools 
+import copy 
 
 class Node():
     def __init__(self, left, right, rows, random_features):
@@ -37,10 +38,11 @@ class Tree():
         self.createNodes(node)
 
     def createNodes(self, node):
+        #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
             node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
-            #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
-            print "leaf was created with rows", node.rows, node.decision, node.left
+            #print "node.decision", node.decision
+            #print "leaf was created with rows", node.rows
             return 
         #zakladamy ze jesli criterium zwraca krotke to jest mozliwy podzial na dwa nody
         node.indexes = self.criterium(node.rows, node.random_features) # each time new tree has new list_of_permuted_rows  (row, column, value)
@@ -57,7 +59,6 @@ class Tree():
                 node.right.rows.append(row)
         self.createNodes(node.left)
         self.createNodes(node.right)
-        print "node.rows!!!", node.rows
 
     def criterium(self, rows, columns):
         if called_class == "regression":
@@ -173,21 +174,21 @@ class Tree():
             return float(sum(decisions)) /len(decisions)
 
     def go_through(self, node, row):
-        if node.left == None:
+        if node.left is None:
             return node.decision
         else:
             feature_column = node.indexes[1]
             if input_features_type[feature_column] == "number": #zmienne typu liczbowego
                 if row[feature_column] <= node.indexes[2]:
-                    self.go_through(node.left, row)
+                    return self.go_through(node.left, row)
                 else:
-                    self.go_through(node.right, row)
+                    return self.go_through(node.right, row)
             elif input_features_type[feature_column] == "mixed": #zmienne typu wyliczeniowego
                 if row[feature_column] == node.indexes[2]:
-                    self.go_through(node.left, row)
+                    return self.go_through(node.left, row)
                     #print "ide wlewo"
                 else:
-                    self.go_through(node.right, row)
+                    return self.go_through(node.right, row)
                     #print "ide wprawo"
             else:
                 print "blaaaaaaaad"
@@ -200,8 +201,8 @@ class RandomForestClassifier():
     def __init__(self, n_features_user):
         self.n_features = n_features_user
         self.random_forest = []
+        self.input_matrix = None
     
-
     def fit(self, X):
         """uczy klasyfikator na zbiorze treningowym"""
         global called_class #
@@ -210,7 +211,8 @@ class RandomForestClassifier():
         global input_features_type 
         input_features_type = self.checkFeaturesType(X) 
         n_features = self.n_features
-        self.random_forest = self.build_random_forest(X)
+        self.input_matrix = X
+        self.random_forest = self.build_random_forest()
 
 
     def checkFeaturesType(self, X):
@@ -252,55 +254,55 @@ class RandomForestClassifier():
 
 
     
-    def build_random_forest(self, input_matrix):
+    def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
         while counter < 11:
             counter += 1
-            self.random_forest.append(self.buildTree(input_matrix))#budowanie drzewa, losowanie wierszy w buildTree 
-        print self.find_ooberr(input_matrix)
-        while self.find_ooberr(input_matrix) > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-            print self.find_ooberr(input_matrix)
+            self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
+        print self.find_ooberr()
+        while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
+            print self.find_ooberr()
             print "obliczam blad i buduje dodatkowe drzewo"
             counter += 1
-            self.random_forest.append(self.buildTree(input_matrix)) 
+            self.random_forest.append(self.buildTree()) 
         print "Random Forest was build, has %d trees" % len(self.random_forest)
 
 
 
-    def buildTree(self, input_matrix):
+    def buildTree(self):
         """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix). 
         Losowanie wierszy ze zwracaniem, zachowujac wysokosc macierzy.
         Sprawdza zmiane stosunku decyzji zeby zapobiec pobieraniu jednotypowych decyzji"""
         permutated_matrix = []
-        rows_random = np.random.choice(range(len(input_matrix)), size = len(input_matrix), replace = True)
+        rows_random = np.random.choice(range(len(self.input_matrix)), size = len(self.input_matrix), replace = True)
         rows_random.sort() #losuje wiersze nowej tablicy ze zwracaniem 
-        out_of_bag = list(set(range(len(input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
+        out_of_bag = list(set(range(len(self.input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
 
         for row in rows_random: 
-            permutated_matrix.append(input_matrix[row])
+            permutated_matrix.append(self.input_matrix[row])
 
-        if self.check_decision_proportion(input_matrix, permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
+        if self.check_decision_proportion(permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
             #print "new tree ####################################################################" + "\n"
             #print tree.root
-            print "drzewo OOB", tree.out_of_bag
+            #print "drzewo OOB", tree.out_of_bag
             return tree      
         else:
             print "buildTree recursion"
-            self.buildTree(input_matrix) #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
+            self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
         
 
-    def check_decision_proportion(self, input_matrix, permutated_matrix):
+    def check_decision_proportion(self, permutated_matrix):
         """Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.  
         Zwraca True jesli proporcja pomiedzy decyzjami jest wieksza rowna 0.5"""
         input_decision_list = []
         output_decision_list = []
 
-        for row in range(len(input_matrix)):
-            input_decision_list.append(input_matrix[row][-1])
+        for row in range(len(self.input_matrix)):
+            input_decision_list.append(self.input_matrix[row][-1])
             output_decision_list.append(permutated_matrix[row][-1])
 
         if input_decision_list.count(True)==0 or input_decision_list.count(False) == 0:
@@ -321,34 +323,56 @@ class RandomForestClassifier():
         return True
         
 
-    def find_ooberr(self, M):
-        """Sprawdza stabilizacje bledu OOB. Wartosc oober_10 warunkuje zakonczenie procesu uczenia. 
-        Tworzy slownik decyzji dla kazdego drzewa,gdzie przechowywana jest liczba poprawnych i blednych decyzji. 
-        Kluczem jest index testowanego wiersza, value[0] jest t_i, value[1] f_i. Zwraca oober_10"""
 
-        oober_10 = self.ooberr(-11, M) - sum([self.ooberr(index, M) for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drze
-        print "ostatnie 10 wartosci oobeer w lesie", repr([drzewo.ooberr for drzewo in self.random_forest[-10:]])
+    def find_ooberr(self):
+        """ kazde drzewo ma self.ooberr { {nr_wierszu : [lista decyzji otrzymnych przy go_through przez 
+        drzewa gdzie ten wiersz byl w out_of_bag], ....}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}"""
+        for index, tree in enumerate(self.random_forest):
+            if tree.ooberr == None: #czyli dla tego drzewa ooberr jeszcze nie byl liczony
+                tree.ooberr = self.update(index-1)
+        
+        oober_10 = self.random_forest[-11].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drze
         return oober_10
 
-    def ooberr(self, tree_index, M):
-        drzewo = self.random_forest[tree_index]
-        licznik = 0
-        for row in drzewo.out_of_bag:
-            if drzewo.go_through(drzewo.root, M[row][:-1]): #sprawdzenie decyzji zwracanej przez go_through, True = decyzja w lisciu true
-                decision = True #wiersz podawany bez decyzji, po przechodzeniu przez drzewo zwroci decyzje
-            else:
-                decision = False
-            right_decision = M[row][-1]
-            licznik += 1-abs(right_decision-decision) #licznik
-        mianownik = len(drzewo.out_of_bag)
-        if tree_index > 0:
-            #drzewo.ooberr teraz bedzie lista dwuelementowa pamietajaca licznik na 0 pozycji i mianownik na 1
-            self.random_forest[tree_index].ooberr = [sum(pair) for pair in zip(self.ooberr(tree_index-1, M), [licznik, mianownik])]
+
+    def update(self, tree_index):
+        if tree_index == -1: #musimy po raz pierwszy stworzyc dictionary
+            known_ooberr_dict = {"ooberr_dict":{},"ooberr_value":None}
         else:
-            self.random_forest[tree_index].ooberr = [licznik, mianownik]
+            known_ooberr_dict = copy.deepcopy(self.random_forest[tree_index].ooberr)  
         
-        ft_ratio = float(self.random_forest[tree_index].ooberr[0])/self.random_forest[tree_index].ooberr[1]
-        return ft_ratio
+        for row in self.random_forest[tree_index+1].out_of_bag:
+            tree = self.random_forest[tree_index+1]
+            predicted_decision = False
+            if tree.go_through(tree.root, self.input_matrix[row][:-1]):
+                predicted_decision = True
+
+            if not row in known_ooberr_dict["ooberr_dict"]:
+                known_ooberr_dict["ooberr_dict"][row] = []
+
+            known_ooberr_dict["ooberr_dict"][row].append(predicted_decision)
+
+        #wybierajac major decision na kazdej liscie i porownujac z decyzja prawidlowa obliczamy ration i zapisujemy do ooberr_value
+        list_right_vs_major_decision = []
+        for row in known_ooberr_dict["ooberr_dict"]:
+            if known_ooberr_dict["ooberr_dict"][row]: #jesli lista decyzji nie jest pusta
+                right_decision = self.input_matrix[row][-1]
+                #print "known_ooberr_dict[ooberr_dict][%d]" % row, known_ooberr_dict["ooberr_dict"][row]
+                trues = sum(known_ooberr_dict["ooberr_dict"][row])
+                falses = len(known_ooberr_dict["ooberr_dict"][row]) - trues
+                if trues > falses:
+                    major_decision = True
+                else:
+                    major_decision = False
+                #print "right_decision", right_decision
+                #print "major_decision", major_decision
+                list_right_vs_major_decision.append(abs(right_decision - major_decision)) #0 if true (means that right and major decision are the same)
+
+        known_ooberr_dict["ooberr_value"] = float(sum(list_right_vs_major_decision))/len(list_right_vs_major_decision)
+        print "known_ooberr_dict", known_ooberr_dict
+        return known_ooberr_dict
+
+
 ####################################################################################################################################################################################
 ####RANDOM FOREST REGRESSOR
 ####################################################################################################################################################################################
