@@ -12,7 +12,6 @@ class Node():
         self.decision = None #w przypadku regresji bedzie trzymac srednia wartosc a w klasyfikacji true/ false
 
     def __repr__(self):
-
         """Printuje utworzone drzewo od korzenia do lisci."""
         ret = "\t"+repr([(row, input_matrix[row][-1]) for row in self.rows])+"\n"
         if self.left != None:
@@ -258,7 +257,7 @@ class RandomForestClassifier():
     def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 11:
+        while counter < 50:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
