@@ -14,8 +14,7 @@ class Node():
     def __repr__(self):
 
         """Printuje utworzone drzewo od korzenia do lisci."""
-
-        ret = "\t"+repr(self.rows)+"\n"
+        ret = "\t"+repr([(row, input_matrix[row][-1]) for row in self.rows])+"\n"
         if self.left != None:
             for child in [self.left, self.right]:
                 ret += child.__repr__()
@@ -67,8 +66,6 @@ class Tree():
             return self.gini(rows, columns)
 
     def gini(self, rows, features):
-        if len(rows) <= 3: #warunek stop nie dzielimy dalej jest to lisc
-            return False
         node_decisions = [self.permutated_matrix[row][-1] for row in rows]
         if sum(node_decisions) == 0 or sum(node_decisions) == len(node_decisions): #jesli same false albo true
             return False #ten node nie potrzebuje dzielenia jest lisciem
@@ -264,15 +261,11 @@ class RandomForestClassifier():
         while counter < 11:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
-        print self.find_ooberr()
-        #while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-        a=0
-        while self.find_ooberr() > 0.01:
-            print self.find_ooberr()
+
+        while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
             print "obliczam blad i buduje dodatkowe drzewo"
             counter += 1
             self.random_forest.append(self.buildTree()) 
-            a -= 1
         print "Random Forest was build, has %d trees" % len(self.random_forest)
 
 
@@ -293,8 +286,8 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            #print "new tree ####################################################################" + "\n"
-            #print tree.root
+            print "new tree ####################################################################" + "\n"
+            print tree.root
             #print "drzewo OOB", tree.out_of_bag
             return tree      
         else:
@@ -330,8 +323,8 @@ class RandomForestClassifier():
         return True
         
 
-
     def find_ooberr(self):
+        print "self.random_forest", self.random_forest
         """ kazde drzewo ma self.ooberr { {nr_wierszu : [lista decyzji otrzymnych przy go_through przez 
         drzewa gdzie ten wiersz byl w out_of_bag], ....}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}"""
         for index, tree in enumerate(self.random_forest):
@@ -419,16 +412,13 @@ class RandomForestRegressor(RandomForestClassifier): #dodane rss do tree
 class Test():
 
     def k_mers(self, k=4):
-
         """Tworzy wszystkie mozliwe kombinacje k-merow"""
-
         bases = ['A', 'T', 'G', 'C']
         #poszukiwanie tetramerow
         list_of_k_mers = [''.join(p) for p in itertools.product(bases, repeat = k)]
         return list_of_k_mers
 
     def build_test_string_set(self):
-
         list_of_4_mers = self.k_mers()
         with open("enhancers_heart.fa", "r") as enhancers:
             enhancers_lines = enhancers.readlines() #lista linijek z pliku
@@ -437,13 +427,11 @@ class Test():
 
         X = [] #tablica zliczen wystapien 4 merow wraz z decyzja na -1 miejscu 
         #Y = []
-
         for sequence in enhancers_lines:
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
             k_mer_repetition.append(True)
             X.append(k_mer_repetition)
             #Y.append(True)
-
         for sequence in random_lines: 
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
             k_mer_repetition.append(False)
@@ -455,6 +443,7 @@ class Test():
 #### THE END
 ############################################################################################################################################
 if __name__  == "__main__":
+    global input_matrix
     input_matrix = Test().build_test_string_set()
     print input_matrix
     RandomForestClassifier(16).fit(input_matrix)
