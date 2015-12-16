@@ -202,19 +202,29 @@ class RandomForestClassifier():
         self.random_forest = []
         self.input_matrix = None
     
-    def fit(self, X):
+    def fit(self, X, y):
         """uczy klasyfikator na zbiorze treningowym"""
         global called_class #
         called_class = "classification"
         global n_features
         global input_features_type 
+        global input_matrix
 
-        input_features_type = self.checkFeaturesType(X) 
+        M = self.konwerter(X,y)
+        input_matrix = M
+
+        input_features_type = self.checkFeaturesType(M) 
         print "input_features_type", input_features_type
         n_features = self.n_features
-        self.input_matrix = X
+        self.input_matrix = M
         self.random_forest = self.build_random_forest()
 
+    def konwerter(self, X,y):
+
+        for row,row2 in zip(X,Y):
+                row.append(row2)
+
+        return X
 
     def checkFeaturesType(self, X):
         #matrix wypelniona none o jedna kolumne mniejsza bedzie przechowywac false jesli int or float, 
@@ -424,26 +434,24 @@ class Test():
             enhancers_lines = enhancers.readlines() #lista linijek z pliku
         with open("random.fa", "r") as random:
             random_lines = random.readlines()
-
+        global X
+        global Y
         X = [] #tablica zliczen wystapien 4 merow wraz z decyzja na -1 miejscu 
-        #Y = []
+        Y = []
         for sequence in enhancers_lines:
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            k_mer_repetition.append(True)
+            #k_mer_repetition.append(True)
             X.append(k_mer_repetition)
-            #Y.append(True)
+            Y.append(True)
         for sequence in random_lines: 
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            k_mer_repetition.append(False)
+            #k_mer_repetition.append(False)
             X.append(k_mer_repetition)
-            #Y.append(False)
+            Y.append(False)
 
-        return X
-############################################################################################################################################
+#########################################################################################################################################
 #### THE END
 ############################################################################################################################################
 if __name__  == "__main__":
-    global input_matrix
-    input_matrix = Test().build_test_string_set()
-    print input_matrix
-    RandomForestClassifier(16).fit(input_matrix)
+    Test().build_test_string_set()
+    RandomForestClassifier(16).fit(X,Y)
