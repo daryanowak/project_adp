@@ -67,6 +67,8 @@ class Tree():
             return self.gini(rows, columns)
 
     def gini(self, rows, features):
+        if len(rows) <= 3: #warunek stop nie dzielimy dalej jest to lisc
+            return False
         node_decisions = [self.permutated_matrix[row][-1] for row in rows]
         if sum(node_decisions) == 0 or sum(node_decisions) == len(node_decisions): #jesli same false albo true
             return False #ten node nie potrzebuje dzielenia jest lisciem
@@ -209,7 +211,9 @@ class RandomForestClassifier():
         called_class = "classification"
         global n_features
         global input_features_type 
+
         input_features_type = self.checkFeaturesType(X) 
+        print "input_features_type", input_features_type
         n_features = self.n_features
         self.input_matrix = X
         self.random_forest = self.build_random_forest()
@@ -219,18 +223,18 @@ class RandomForestClassifier():
         #matrix wypelniona none o jedna kolumne mniejsza bedzie przechowywac false jesli int or float, 
         #oraz true jesli inaczej -> suma kolumny 0 tylko jesli same liczby do list_of_feauters dodaje "number"
         feature_type_matrix = [[None for i in range(len(X[0])-1)] for j in range(len(X))] 
-        for row in X:
-            for column in row[:-1]:
-                if type(row[column]) == int or type(row[column]) == float:
-                    feature_type_matrix = False #zmienne typu liczbowego w kolumnie
+        for row, vector in  enumerate(X):
+            for column, value in enumerate(vector[:-1]):
+                if type(X[row][column]) == int or type(X[row][column]) == float:
+                    feature_type_matrix[row][column] = False #zmienne typu liczbowego w kolumnie
                 else:
-                    feature_type_matrix = True #zmienne typu wyliczeniowwgo w kolumnie
+                    feature_type_matrix[row][column] = True #zmienne typu wyliczeniowwgo w kolumnie
 
         list_of_features = []
-        for column in range(len(X[0]) - 1):
+        for column in range(len(feature_type_matrix[0])):
             summ = 0
-            for row in range(len(X)): #sprawdzenie typu wartosci w kolumnach, suma wartosci True i False w kolumnach
-                summ += X[row][column]
+            for row in range(len(feature_type_matrix)): #sprawdzenie typu wartosci w kolumnach, suma wartosci True i False w kolumnach
+                summ += feature_type_matrix[row][column]
             if summ == 0: #kolumna typu liczbowego (suma False)
                 list_of_features.append("number")
             else:
@@ -261,11 +265,14 @@ class RandomForestClassifier():
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
         print self.find_ooberr()
-        while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
+        #while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
+        a=0
+        while self.find_ooberr() > 0.01:
             print self.find_ooberr()
             print "obliczam blad i buduje dodatkowe drzewo"
             counter += 1
             self.random_forest.append(self.buildTree()) 
+            a -= 1
         print "Random Forest was build, has %d trees" % len(self.random_forest)
 
 
@@ -449,4 +456,5 @@ class Test():
 ############################################################################################################################################
 if __name__  == "__main__":
     input_matrix = Test().build_test_string_set()
+    print input_matrix
     RandomForestClassifier(16).fit(input_matrix)
