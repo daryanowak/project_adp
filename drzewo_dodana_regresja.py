@@ -38,6 +38,7 @@ class Tree():
 
     def createNodes(self, node):
         #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
+        print "node.random_features", node.random_features
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
             node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
             #print "node.decision", node.decision
@@ -300,7 +301,7 @@ class RandomForestClassifier():
     def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 30:
+        while counter < 11:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
