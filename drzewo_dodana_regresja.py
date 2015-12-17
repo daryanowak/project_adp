@@ -73,7 +73,7 @@ class Tree():
         indexes = []
         best_left_decisions = []
         best_right_decisions = []
-        n = len(rows)
+        n = float(len(rows))
         n_Ls = [] #zapisujemy wartosci n_L i n_R zeby zlapac warunek stopu kiedy kazdy mozliwy podzial wedlug cech nie daje rozdzialu 
         n_Rs = []
         #znajdz wartosc gini dla wybranych wierszy i wylosowanych kolumn
@@ -165,7 +165,7 @@ class Tree():
         decisions = [self.permutated_matrix[row][-1] for row in rows] #w przypadku called_class = regresja sa to wartosci, 
         #natomiast w przypadku klasyfikacji sa to false true
         if called_class == "classification":
-            if sum(decisions)/len(decisions) > 0.5:
+            if float(sum(decisions))/len(decisions) > 0.5:
                 return True
             else:
                 return False 
@@ -257,18 +257,50 @@ class RandomForestClassifier():
         final_decision = []
         for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
             decyzje =[tree.go_through(tree.root, v) for tree in self.random_forest] 
-            if decyzje.count(True)/len(decyzje) > 0.5:
+            if decyzje.count(True)/float(len(decyzje)) > 0.5:
                 final_decision.append(True)
             else:
                 final_decision.append(False)          
         return final_decision
 
+    def predict_proba(self, X):
+
+        """Zwraca prawdopodobienstwo przynaleznosci przykladow z X do pierwszej klasy(major_decision)"""
+
+        all_decisions = [] #tablica wszystkich decyzji dla kazdego wiersza i drzewa
+
+        for row in X:
+            decisions = []
+            for tree in self.random_forest:
+                if go_through(tree.root, row):
+                    decison = True
+                else:
+                    decision = False
+                decisions.append(decison)
+
+            all_decisions.append(decisions)
+
+        for decision in all_decisions[0]:
+            if float(sum(all_decisions[0]))/len(all_decisions) > 0.5:
+                major_decision = True #major_decision w 0 wiersz = pierwsza klasa
+            else:
+                major_decision = False
+
+        proba_lista = []
+
+        for decisions in all_decisions:
+            if major_decision: #if True
+                proba_lista.append(float(sum(decisons))/ len(decisons))
+            else: #if False
+                proba_lista.append(1-(float(sum(decisons))/ len(decisons)))
+
+        return proba_lista
 
     
     def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 11:
+        while counter < 30:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
@@ -296,8 +328,8 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            print "new tree ####################################################################" + "\n"
-            print tree.root
+            #print "new tree ####################################################################" + "\n"
+            #print tree.root
             #print "drzewo OOB", tree.out_of_bag
             return tree      
         else:
