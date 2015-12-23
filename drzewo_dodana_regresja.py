@@ -37,11 +37,8 @@ class Tree():
 
     def createNodes(self, node):
         #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
-        print "node.random_features", node.random_features
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
             node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
-            #print "node.decision", node.decision
-            #print "leaf was created with rows", node.rows
             return 
         #zakladamy ze jesli criterium zwraca krotke to jest mozliwy podzial na dwa nody
         node.indexes = self.criterium(node.rows, node.random_features) # each time new tree has new list_of_permuted_rows  (row, column, value)
@@ -110,8 +107,6 @@ class Tree():
                     best_left_decisions = left_decisions
                     best_right_decisions = right_decisions
 
-        #print "min gini", gini
-        #print "indexes best", indexes
         if [a*b for a,b in zip(n_Ls,n_Rs)] == 0: #jesli mnozenie skalarne daje 0 to znaczy, ze wyczerpala sie mozliwosc podzialu za pomoca wylosowanych cech
             return False
         elif gini == 0: #czyste rozdzielenie na klasy
@@ -209,22 +204,18 @@ class RandomForestClassifier():
         global n_features
         global input_features_type 
         global input_matrix
-
         M = self.konwerter(X,y)
         input_matrix = M
-
         input_features_type = self.checkFeaturesType(M) 
-        print "input_features_type", input_features_type
         n_features = self.n_features
         self.input_matrix = M
-        self.random_forest = self.build_random_forest()
+        self.build_random_forest()
 
-    def konwerter(self, X,y):
 
-        for row,row2 in zip(X,Y):
-                row.append(row2)
-
-        return X
+    def konwerter(self, X, y):
+        p = np.column_stack( [X, y] )
+        list_of_lists = np.array(p).tolist()
+        return list_of_lists    
 
     def checkFeaturesType(self, X):
         #matrix wypelniona none o jedna kolumne mniejsza bedzie przechowywac false jesli int or float, 
@@ -250,10 +241,11 @@ class RandomForestClassifier():
         return list_of_features
 
 
-    def predict(self, X):
+    def predict(self, Xarray):
         """przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m. 
         Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest 
         i generuje najbardziej prawdopodobna decyzje. Wynikiem jest wektor dlugosci macierzy wejsciowej."""
+        X = np.array(Xarray).tolist()
         final_decision = []
         for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
             decyzje =[tree.go_through(tree.root, v) for tree in self.random_forest] 
@@ -264,11 +256,8 @@ class RandomForestClassifier():
         return final_decision
 
     def predict_proba(self, X):
-
         """Zwraca prawdopodobienstwo przynaleznosci przykladow z X do pierwszej klasy(major_decision)"""
-
         all_decisions = [] #tablica wszystkich decyzji dla kazdego wiersza i drzewa
-
         for row in X:
             decisions = []
             for tree in self.random_forest:
@@ -277,7 +266,6 @@ class RandomForestClassifier():
                 else:
                     decision = False
                 decisions.append(decison)
-
             all_decisions.append(decisions)
 
         for decision in all_decisions[0]:
@@ -287,14 +275,13 @@ class RandomForestClassifier():
                 major_decision = False
 
         proba_lista = []
-
         for decisions in all_decisions:
             if major_decision: #if True
                 proba_lista.append(float(sum(decisons))/ len(decisons))
             else: #if False
                 proba_lista.append(1-(float(sum(decisons))/ len(decisons)))
-
         return proba_lista
+
 
     
     def build_random_forest(self):
@@ -305,10 +292,8 @@ class RandomForestClassifier():
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
         while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-            print "obliczam blad i buduje dodatkowe drzewo"
             counter += 1
             self.random_forest.append(self.buildTree()) 
-        print "Random Forest was build, has %d trees" % len(self.random_forest)
 
 
 
@@ -328,13 +313,9 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            #print "new tree ####################################################################" + "\n"
-            #print tree.root
-            #print "drzewo OOB", tree.out_of_bag
             return tree      
         else:
-            print "buildTree recursion"
-            self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
+            return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
         
 
     def check_decision_proportion(self, permutated_matrix):
@@ -350,15 +331,12 @@ class RandomForestClassifier():
         if input_decision_list.count(True)==0 or input_decision_list.count(False) == 0:
             print "The training set is unvalid, contain only one decision class"
             return False
-        a = float(input_decision_list.count(True))
-       
+        a = float(input_decision_list.count(True))       
         if output_decision_list.count(True)==0 or output_decision_list.count(False) == 0 :
             print "The output set is unvalid, contain only one decision class"
             return False
         b = float(output_decision_list.count(True))
-
         decision_proportion = abs(a-b)/a
-
         if decision_proportion >= 0.1:
             return False
 
@@ -399,19 +377,16 @@ class RandomForestClassifier():
         for row in known_ooberr_dict["ooberr_dict"]:
             if known_ooberr_dict["ooberr_dict"][row]: #jesli lista decyzji nie jest pusta
                 right_decision = self.input_matrix[row][-1]
-                #print "known_ooberr_dict[ooberr_dict][%d]" % row, known_ooberr_dict["ooberr_dict"][row]
                 trues = sum(known_ooberr_dict["ooberr_dict"][row])
                 falses = len(known_ooberr_dict["ooberr_dict"][row]) - trues
                 if trues > falses:
                     major_decision = True
                 else:
                     major_decision = False
-                #print "right_decision", right_decision
-                #print "major_decision", major_decision
+
                 list_right_vs_major_decision.append(abs(right_decision - major_decision)) #0 if true (means that right and major decision are the same)
 
         known_ooberr_dict["ooberr_value"] = float(sum(list_right_vs_major_decision))/len(list_right_vs_major_decision)
-        print "known_ooberr_dict", known_ooberr_dict
         return known_ooberr_dict
 
 
@@ -486,4 +461,5 @@ class Test():
 ############################################################################################################################################
 if __name__  == "__main__":
     Test().build_test_string_set()
-    RandomForestClassifier(16).fit(X,Y)
+    n_features = sqrt(len(X[0]))
+    RandomForestClassifier(n_features).fit(X,Y)
