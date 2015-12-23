@@ -287,7 +287,7 @@ class RandomForestClassifier():
     def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 11:
+        while counter < 30:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
@@ -461,5 +461,4 @@ class Test():
 ############################################################################################################################################
 if __name__  == "__main__":
     Test().build_test_string_set()
-    n_features = sqrt(len(X[0]))
-    RandomForestClassifier(n_features).fit(X,Y)
+    RandomForestClassifier(16).fit(X,Y)
