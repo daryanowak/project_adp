@@ -37,6 +37,7 @@ class Tree():
 
     def createNodes(self, node):
         #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
+        print "node.random_features", node.random_features
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
             node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
             #print "node.decision", node.decision
@@ -72,7 +73,7 @@ class Tree():
         indexes = []
         best_left_decisions = []
         best_right_decisions = []
-        n = len(rows)
+        n = float(len(rows))
         n_Ls = [] #zapisujemy wartosci n_L i n_R zeby zlapac warunek stopu kiedy kazdy mozliwy podzial wedlug cech nie daje rozdzialu 
         n_Rs = []
         #znajdz wartosc gini dla wybranych wierszy i wylosowanych kolumn
@@ -164,7 +165,7 @@ class Tree():
         decisions = [self.permutated_matrix[row][-1] for row in rows] #w przypadku called_class = regresja sa to wartosci, 
         #natomiast w przypadku klasyfikacji sa to false true
         if called_class == "classification":
-            if sum(decisions)/len(decisions) > 0.5:
+            if float(sum(decisions))/len(decisions) > 0.5:
                 return True
             else:
                 return False 
@@ -201,19 +202,29 @@ class RandomForestClassifier():
         self.random_forest = []
         self.input_matrix = None
     
-    def fit(self, X):
+    def fit(self, X, y):
         """uczy klasyfikator na zbiorze treningowym"""
         global called_class #
         called_class = "classification"
         global n_features
         global input_features_type 
+        global input_matrix
 
-        input_features_type = self.checkFeaturesType(X) 
+        M = self.konwerter(X,y)
+        input_matrix = M
+
+        input_features_type = self.checkFeaturesType(M) 
         print "input_features_type", input_features_type
         n_features = self.n_features
-        self.input_matrix = X
+        self.input_matrix = M
         self.random_forest = self.build_random_forest()
 
+    def konwerter(self, X,y):
+
+        for row,row2 in zip(X,Y):
+                row.append(row2)
+
+        return X
 
     def checkFeaturesType(self, X):
         #matrix wypelniona none o jedna kolumne mniejsza bedzie przechowywac false jesli int or float, 
@@ -246,12 +257,44 @@ class RandomForestClassifier():
         final_decision = []
         for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
             decyzje =[tree.go_through(tree.root, v) for tree in self.random_forest] 
-            if decyzje.count(True)/len(decyzje) > 0.5:
+            if decyzje.count(True)/float(len(decyzje)) > 0.5:
                 final_decision.append(True)
             else:
                 final_decision.append(False)          
         return final_decision
 
+    def predict_proba(self, X):
+
+        """Zwraca prawdopodobienstwo przynaleznosci przykladow z X do pierwszej klasy(major_decision)"""
+
+        all_decisions = [] #tablica wszystkich decyzji dla kazdego wiersza i drzewa
+
+        for row in X:
+            decisions = []
+            for tree in self.random_forest:
+                if go_through(tree.root, row):
+                    decison = True
+                else:
+                    decision = False
+                decisions.append(decison)
+
+            all_decisions.append(decisions)
+
+        for decision in all_decisions[0]:
+            if float(sum(all_decisions[0]))/len(all_decisions) > 0.5:
+                major_decision = True #major_decision w 0 wiersz = pierwsza klasa
+            else:
+                major_decision = False
+
+        proba_lista = []
+
+        for decisions in all_decisions:
+            if major_decision: #if True
+                proba_lista.append(float(sum(decisons))/ len(decisons))
+            else: #if False
+                proba_lista.append(1-(float(sum(decisons))/ len(decisons)))
+
+        return proba_lista
 
     
     def build_random_forest(self):
@@ -285,8 +328,8 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            print "new tree ####################################################################" + "\n"
-            print tree.root
+            #print "new tree ####################################################################" + "\n"
+            #print tree.root
             #print "drzewo OOB", tree.out_of_bag
             return tree      
         else:
@@ -423,26 +466,24 @@ class Test():
             enhancers_lines = enhancers.readlines() #lista linijek z pliku
         with open("random.fa", "r") as random:
             random_lines = random.readlines()
-
+        global X
+        global Y
         X = [] #tablica zliczen wystapien 4 merow wraz z decyzja na -1 miejscu 
-        #Y = []
+        Y = []
         for sequence in enhancers_lines:
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            k_mer_repetition.append(True)
+            #k_mer_repetition.append(True)
             X.append(k_mer_repetition)
-            #Y.append(True)
+            Y.append(True)
         for sequence in random_lines: 
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            k_mer_repetition.append(False)
+            #k_mer_repetition.append(False)
             X.append(k_mer_repetition)
-            #Y.append(False)
+            Y.append(False)
 
-        return X
-############################################################################################################################################
+#########################################################################################################################################
 #### THE END
 ############################################################################################################################################
 if __name__  == "__main__":
-    global input_matrix
-    input_matrix = Test().build_test_string_set()
-    print input_matrix
-    RandomForestClassifier(16).fit(input_matrix)
+    Test().build_test_string_set()
+    RandomForestClassifier(16).fit(X,Y)
