@@ -313,6 +313,7 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
+            print tree.root
             return tree      
         else:
             return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
