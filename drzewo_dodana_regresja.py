@@ -287,14 +287,13 @@ class RandomForestClassifier():
     def build_random_forest(self):
         """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 50:
+        while counter < 11:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
         while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-            counter += 1
             self.random_forest.append(self.buildTree()) 
-
+        print "random forest was build and contain %d trees" % len(self.random_forest)
 
 
     def buildTree(self):
@@ -313,7 +312,6 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            print tree.root
             return tree      
         else:
             return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
@@ -345,7 +343,6 @@ class RandomForestClassifier():
         
 
     def find_ooberr(self):
-        print "self.random_forest", self.random_forest
         """ kazde drzewo ma self.ooberr { {nr_wierszu : [lista decyzji otrzymnych przy go_through przez 
         drzewa gdzie ten wiersz byl w out_of_bag], ....}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}"""
         for index, tree in enumerate(self.random_forest):
@@ -353,6 +350,7 @@ class RandomForestClassifier():
                 tree.ooberr = self.update(index-1)
         
         oober_10 = self.random_forest[-11].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drze
+        print "oober_10", oober_10
         return oober_10
 
 
@@ -388,6 +386,7 @@ class RandomForestClassifier():
                 list_right_vs_major_decision.append(abs(right_decision - major_decision)) #0 if true (means that right and major decision are the same)
 
         known_ooberr_dict["ooberr_value"] = float(sum(list_right_vs_major_decision))/len(list_right_vs_major_decision)
+        print "known_ooberr_dict", known_ooberr_dict
         return known_ooberr_dict
 
 
