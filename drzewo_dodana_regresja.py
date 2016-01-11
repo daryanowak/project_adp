@@ -8,8 +8,9 @@ class Node():
         self.right = right
         self.rows = rows
         self.random_features = random_features # losowo wybrane na kazdym nodzie kolumny
-        self.indexes = None #indeksy wartosci zawartych w macierzy
-        self.decision = None #w przypadku regresji bedzie trzymac srednia wartosc a w klasyfikacji true/ false
+        self.indexes = None #indeksy wartosci zawartych w macierzy, podczas obliczania indexu Giniego self.indexes 
+        #jest przypisywane do wartosci wg ktorej nastapil podzial w Nodzie (numer wiersza, numer kolumny)
+        self.decision = None #w przypadku regresji bedzie trzymac srednia wartosc, a w klasyfikacji  self.decision przechowywane w lisciach w postaci true/ false
 
     def __repr__(self):
         """Printuje utworzone drzewo od korzenia do lisci."""
@@ -25,6 +26,9 @@ class Node():
 
 class Tree():
     def __init__(self, permutated_matrix):
+        """Inicjalizacja roota klasy Node. Dostaje wszystkie mozliwe wiersze z pliku. 
+        Losujemy bez zwracania kolumny, ktorych liczba odpowiada zadeklarowanej liczbie n_features.
+        """
         #inicjalizacja roota
         self.root = Node(None, None, range(len(permutated_matrix)), np.random.choice(range(len(permutated_matrix[0])-1), size = n_features, replace = False) )
         self.permutated_matrix = permutated_matrix
@@ -115,7 +119,6 @@ class Tree():
             return indexes #zwraca indexy cech po ktorych nastepuje podzial
 
     def rss(self, rows, features):
-        print "rss called"
         if len(rows) <= 3: #warunek stop nie dzielimy dalej jest to lisc
             return False
         rss = 1000          #nie mozna dawac tu wartosci
@@ -157,6 +160,10 @@ class Tree():
             return ValueError
 
     def major_decision(self, rows):
+        """Pobiera wiersze wykorzystywane przez dany Node i porownuje decyzje dla kazdego wiersza z decyzja w wejsciowej macierzy (M).
+        Oblicza decyzje wiekszosciowa w lisciu. Major decision jest obliczane jako suma decyzji True/False. Suma decyzji jest iloscia True. 
+        Gdy suma dzielona przez dlugosc > 0.5 to decyzja wiekszosciowa == True"""
+
         decisions = [self.permutated_matrix[row][-1] for row in rows] #w przypadku called_class = regresja sa to wartosci, 
         #natomiast w przypadku klasyfikacji sa to false true
         if called_class == "classification":
@@ -180,10 +187,8 @@ class Tree():
             elif input_features_type[feature_column] == "mixed": #zmienne typu wyliczeniowego
                 if row[feature_column] == node.indexes[2]:
                     return self.go_through(node.left, row)
-                    #print "ide wlewo"
                 else:
                     return self.go_through(node.right, row)
-                    #print "ide wprawo"
             else:
                 print "blaaaaaaaad"
 
@@ -211,9 +216,10 @@ class RandomForestClassifier():
         self.input_matrix = M
         self.build_random_forest()
 
-
     def konwerter(self, X, y):
-        p = np.column_stack( [X, y] )
+        """laczy macierz z decyzjami, gdzie decyzje dolaczone 
+        w ostatniej kolumnie w macierzy reprezentowane sa jako 0/1 zamiast booli"""
+        p = np.column_stack( [X, y] ) 
         list_of_lists = np.array(p).tolist()
         return list_of_lists    
 
@@ -285,15 +291,26 @@ class RandomForestClassifier():
 
     
     def build_random_forest(self):
-        """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. W przypadku braku stabilizacji powieksza las"""
+        """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. 
+        W przypadku braku stabilizacji powieksza las"""
         counter = 0
-        while counter < 30:
+        while counter < 21:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
 
+        #while counter < 20:
+            #counter += 1
+            #self.random_forest.append(self.buildTree())    
+            #print "\n oober_10", self.find_ooberr()
+
         while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-            self.random_forest.append(self.buildTree()) 
-        print "random forest was build and contain %d trees" % len(self.random_forest)
+            #print "oober_10", self.find_ooberr()
+            self.random_forest.append(self.buildTree())
+
+        for tree in self.random_forest:
+            print "tree_ooberr:  ", tree.ooberr
+
+        print "random forest was build and contain %d trees" % len(self.random_forest)    
 
 
     def buildTree(self):
@@ -304,7 +321,6 @@ class RandomForestClassifier():
         rows_random = np.random.choice(range(len(self.input_matrix)), size = len(self.input_matrix), replace = True)
         rows_random.sort() #losuje wiersze nowej tablicy ze zwracaniem 
         out_of_bag = list(set(range(len(self.input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-
         for row in rows_random: 
             permutated_matrix.append(self.input_matrix[row])
 
@@ -349,9 +365,11 @@ class RandomForestClassifier():
             if tree.ooberr == None: #czyli dla tego drzewa ooberr jeszcze nie byl liczony
                 tree.ooberr = self.update(index-1)
         
-        oober_10 = self.random_forest[-11].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drze
-        print "oober_10", oober_10
-        return oober_10
+        #oober_10 = self.random_forest[-11].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drzew
+        #return oober_10
+        ooberr_20 =  self.random_forest[-21].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-20,0,1)])/20 #sprawdza oober_20 dla 10 ostatnio powstalych drzew
+        return ooberr_20
+
 
 
     def update(self, tree_index):
@@ -386,7 +404,6 @@ class RandomForestClassifier():
                 list_right_vs_major_decision.append(abs(right_decision - major_decision)) #0 if true (means that right and major decision are the same)
 
         known_ooberr_dict["ooberr_value"] = float(sum(list_right_vs_major_decision))/len(list_right_vs_major_decision)
-        print "known_ooberr_dict", known_ooberr_dict
         return known_ooberr_dict
 
 
