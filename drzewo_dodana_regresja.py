@@ -12,13 +12,6 @@ class Node():
         #jest przypisywane do wartosci wg ktorej nastapil podzial w Nodzie (numer wiersza, numer kolumny)
         self.decision = None #w przypadku regresji bedzie trzymac srednia wartosc, a w klasyfikacji  self.decision przechowywane w lisciach w postaci true/ false
 
-    def __repr__(self):
-        """Printuje utworzone drzewo od korzenia do lisci."""
-        ret = "\t"+repr([(row, input_matrix[row][-1]) for row in self.rows])+"\n"
-        if self.left != None:
-            for child in [self.left, self.right]:
-                ret += child.__repr__()
-        return ret
 
 ############################################################################################################################################################################
 #####TREES
@@ -29,7 +22,7 @@ class Tree():
         """Inicjalizacja roota klasy Node. Dostaje wszystkie mozliwe wiersze z pliku. 
         Losujemy bez zwracania kolumny, ktorych liczba odpowiada zadeklarowanej liczbie n_features.
         """
-        #inicjalizacja roota
+
         self.root = Node(None, None, range(len(permutated_matrix)), np.random.choice(range(len(permutated_matrix[0])-1), size = n_features, replace = False) )
         self.permutated_matrix = permutated_matrix
         self.ooberr = None
@@ -37,12 +30,10 @@ class Tree():
 
 
     def insert(self, node):
-        self.createNodes(node)
-
-    def createNodes(self, node):
         #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
         if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
             node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
+            print node.decision
             return 
         #zakladamy ze jesli criterium zwraca krotke to jest mozliwy podzial na dwa nody
         node.indexes = self.criterium(node.rows, node.random_features) # each time new tree has new list_of_permuted_rows  (row, column, value)
@@ -57,8 +48,8 @@ class Tree():
                 node.left.rows.append(row)
             else:
                 node.right.rows.append(row)
-        self.createNodes(node.left)
-        self.createNodes(node.right)
+        self.insert(node.left)
+        self.insert(node.right)
 
     def criterium(self, rows, columns):
         if called_class == "regression":
@@ -120,8 +111,9 @@ class Tree():
 
     def rss(self, rows, features):
         if len(rows) <= 3: #warunek stop nie dzielimy dalej jest to lisc
+            print rows
             return False
-        rss = 1000          #nie mozna dawac tu wartosci
+        rss = 10000000000000          #nie mozna dawac tu wartosci
         indexes = []
         for row in rows:
             for column in features:
@@ -135,14 +127,20 @@ class Tree():
                     else:
                         rows_right.append(row2) 
                 left_decisions = [self.permutated_matrix[row][-1] for row in rows_left]
-                yL = sum(left_decisions)/float(len(left_decisions))
+                if len(left_decisions) == 0:
+                    rss_actual = rss + 100
+                else:
+                    yL = sum(left_decisions)/float(len(left_decisions))
                 right_decisions = [self.permutated_matrix[row][-1] for row in rows_right]
-                yR = sum(right_decisions)/float(len(right_decisions))
-                rss_actual = sum([(decision - yL)**2 for decision in left_decisions]) + sum([(decision - yR)**2 for decision in right_decisions]) 
+                if len(right_decisions) == 0:
+                    rss_actual = rss + 100
+                else:
+                    yR = sum(right_decisions)/float(len(right_decisions))
+                    rss_actual = sum([(decision - yL)**2 for decision in left_decisions]) + sum([(decision - yR)**2 for decision in right_decisions]) 
                 if rss_actual < rss:
                     rss = rss_actual
                     indexes = [row, column, value_to_compare]
-
+        print "indexes", indexes
         return indexes
 
     def compare(self, selected_feature_column, value_to_be_compared, value_to_compare):
@@ -291,24 +289,19 @@ class RandomForestClassifier():
 
     
     def build_random_forest(self):
-        """buduje las losowy. Tworzy 11 pierwszych drzew i sprawdza stabilizacje bledu OOB. 
+        """buduje las losowy. Tworzy 21 pierwszych drzew i sprawdza stabilizacje bledu OOB. 
         W przypadku braku stabilizacji powieksza las"""
         counter = 0
         while counter < 21:
             counter += 1
             self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
+        if called_class == "classification":
+            while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
+                #print "oober_10", self.find_ooberr()
+                self.random_forest.append(self.buildTree())
 
-        #while counter < 20:
-            #counter += 1
-            #self.random_forest.append(self.buildTree())    
-            #print "\n oober_10", self.find_ooberr()
-
-        while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-            #print "oober_10", self.find_ooberr()
-            self.random_forest.append(self.buildTree())
-
-        for tree in self.random_forest:
-            print "tree_ooberr:  ", tree.ooberr
+            for tree in self.random_forest:
+                print "tree_ooberr:  ", tree.ooberr
 
         print "random forest was build and contain %d trees" % len(self.random_forest)    
 
@@ -323,15 +316,19 @@ class RandomForestClassifier():
         out_of_bag = list(set(range(len(self.input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
         for row in rows_random: 
             permutated_matrix.append(self.input_matrix[row])
-
-        if self.check_decision_proportion(permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
+        if called_class == "classification":
+            if self.check_decision_proportion(permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
+                tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
+                tree.insert(tree.root) #budowanie Node
+                tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
+                return tree      
+            else:
+                return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
+        elif called_class == "regression":
             tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
             tree.insert(tree.root) #budowanie Node
             tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            return tree      
-        else:
-            return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
-        
+            return tree   
 
     def check_decision_proportion(self, permutated_matrix):
         """Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.  
@@ -365,8 +362,6 @@ class RandomForestClassifier():
             if tree.ooberr == None: #czyli dla tego drzewa ooberr jeszcze nie byl liczony
                 tree.ooberr = self.update(index-1)
         
-        #oober_10 = self.random_forest[-11].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-10,0,1)])/10 #sprawdza oober_10 dla 10 ostatnio powstalych drzew
-        #return oober_10
         ooberr_20 =  self.random_forest[-21].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-20,0,1)])/20 #sprawdza oober_20 dla 10 ostatnio powstalych drzew
         return ooberr_20
 
@@ -380,9 +375,12 @@ class RandomForestClassifier():
         
         for row in self.random_forest[tree_index+1].out_of_bag:
             tree = self.random_forest[tree_index+1]
-            predicted_decision = False
-            if tree.go_through(tree.root, self.input_matrix[row][:-1]):
-                predicted_decision = True
+            if called_class == "classification":
+                predicted_decision = False
+                if tree.go_through(tree.root, self.input_matrix[row][:-1]):
+                    predicted_decision = True
+            elif called_class == "regression":
+                predicted_decision = tree.go_through(tree.root, self.input_matrix[row][:-1]) 
 
             if not row in known_ooberr_dict["ooberr_dict"]:
                 known_ooberr_dict["ooberr_dict"][row] = []
@@ -415,16 +413,22 @@ class RandomForestRegressor(RandomForestClassifier): #dodane rss do tree
     def __init__(self, n_features_user):
         RandomForestClassifier.__init__(self, n_features_user)
 
-
-    def fit(self, X):
-        """uczy klasyfikator na zbiorze treningowym"""
+    def fit(self, X, y):
         global n_features
+        n_features = self.n_features
         global called_class
         called_class = "regression"
-        global input_features_type 
-        input_features_type = self.checkFeaturesType(X)  
-        n_features = self.n_features
-        self.random_forest = self.build_random_forest(X)
+
+        self.input_matrix = self.konwerter(X,y)
+
+        global input_features_type
+        input_features_type = self.checkFeaturesType(self.input_matrix)  
+        print len(X[0])
+        print "dlugosc", len(input_features_type)
+        
+        self.build_random_forest()
+
+
 
     def predict(self, X):
         """przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m. 
