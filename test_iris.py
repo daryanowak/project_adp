@@ -55,7 +55,7 @@ for i in Y:
 
 def get_score(truth, predictions):
     return sum(map(lambda (x, y): 1 if x == y else 0, zip(truth, predictions)))
-
+"""
 sklearn_classifier = RandomForestClassifier()
 sklearn_classifier = sklearn_classifier.fit(X, Y)
 predictions = sklearn_classifier.predict(X)
@@ -64,12 +64,15 @@ print "sklearn: %f" % get_score(Y, predictions)
 classifier = drzewo_dodana_regresja.RandomForestClassifier(n_features_user=16)
 classifier.fit(X,Y)
 predictions = classifier.predict(X)
-print "custom: %f" % get_score(Y, predictions)
+predictions_proba = classifier.predict_proba(X)
+print "predictions_proba", predictions_proba
+print "custom: %f" % get_score(Y, predictions)"""
 
 
 sklearn_regressor = RandomForestRegressor()
 sklearn_regressor = sklearn_regressor.fit(X, new_Y)
 predictions = sklearn_regressor.predict(X)
+
 """import matplotlib.pyplot as plt
 plt.plot(range(len(new_Y)), new_Y, 'ro')
 plt.plot(range(len(new_Y)), predictions, 'bo')
@@ -81,6 +84,7 @@ print "predictions", predictions
 regressor = drzewo_dodana_regresja.RandomForestRegressor(n_features_user=16)
 regressor.fit(X, new_Y)
 predictions = regressor.predict(X)
+
 print "new_Y", new_Y
 print "predictions_custom", predictions
 
