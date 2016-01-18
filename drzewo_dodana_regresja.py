@@ -56,13 +56,10 @@ class Tree():
 
         if not self.criterium(node.rows, node.random_features):
             node.decision = self.major_decision(node.rows)
-            print "\n node.decision     ", node.decision
             return
         node.indexes = self.criterium(node.rows, node.random_features)
         random_features_left = np.random.choice(range(len(self.permutated_matrix[0])-1), size=n_features, replace=False)
-        print "\nrandom_features_left     ", random_features_left
         random_features_right = np.random.choice(range(len(self.permutated_matrix[0])-1), size=n_features, replace=False)
-        print "\nrandom_features_right      ", random_features_right
         node.left = Node(None, None, [], random_features_left)
         node.right = Node(None, None, [], random_features_right)
         selected_feature_column = node.indexes[1]
@@ -76,8 +73,7 @@ class Tree():
                 node.left.rows.append(row)
             else:
                 node.right.rows.append(row)
-        print "\nnode.left.rows       ", node.left.rows
-        print "\nnode.right.rows        ", node.right.rows
+
         self.insert(node.left)
         self.insert(node.right)
 
@@ -295,7 +291,7 @@ class RandomForestClassifier():
         self.input_matrix = M
         self.build_random_forest()
 
-        print "CLASSIFIER. Random Forest Was Build. It has %d trees" % len(self.random_forest)
+        print "Classifiere - Random Forest Was Build. It has %d trees" % len(self.random_forest)
 
     def konwerter(self, X, y):
 
@@ -438,7 +434,6 @@ class RandomForestClassifier():
                 tree = Tree(permutated_matrix)                
                 tree.insert(tree.root)
                 tree.out_of_bag = out_of_bag
-                print "\nCLASSIFIER: tree.out_of_bag      ", tree.out_of_bag
                 return tree
             else:
                 return self.buildTree()
@@ -446,7 +441,6 @@ class RandomForestClassifier():
             tree = Tree(permutated_matrix)
             tree.insert(tree.root)
             tree.out_of_bag = out_of_bag
-            print "\nREGRESSOR: tree.out_of_bag      ", tree.out_of_bag
             return tree
 
     def check_decision_proportion(self, permutated_matrix):
