@@ -1,16 +1,27 @@
+"""Created by: Darya Karaneuskaya, Agnieszka Sztyler, Adam Zaborowski, Mariia Savenko"""
+
+import copy
 import numpy as np
-import itertools 
-import copy 
+import itertools
+
 
 class Node():
+
+    """Stworzenie wierzcholka(node). Kazdy node przechowuje:
+        node.left, node.right: odwolanie do lewego i prawego dziecka
+        node.rows: numery wierszy, ktore spelniaja warunek podzialu dla danego node
+        node.random_features: numery losowo wybranych kolumn(cech) dla ktorych obliczany jest index Giniego/RSS i nastepuje podzial
+        node.indexes: [row, column, value_to_compare] indeks i wartosc wg ktorej nastpil podzial w danym node
+        node. decision: przyjmuje wartosc None dla node nie bedacych lisciami. Dla klasyfikacji przechowuje decyzje wiekszosciowa w tym lisciu (True/False). 
+        Dla regresji przechowuje srednia wartosc w tym lisciu."""
+
     def __init__(self, left, right, rows, random_features):
         self.left = left
         self.right = right
         self.rows = rows
-        self.random_features = random_features # losowo wybrane na kazdym nodzie kolumny
-        self.indexes = None #indeksy wartosci zawartych w macierzy, podczas obliczania indexu Giniego self.indexes 
-        #jest przypisywane do wartosci wg ktorej nastapil podzial w Nodzie (numer wiersza, numer kolumny)
-        self.decision = None #w przypadku regresji bedzie trzymac srednia wartosc, a w klasyfikacji  self.decision przechowywane w lisciach w postaci true/ false
+        self.random_features = random_features
+        self.indexes = None
+        self.decision = None
 
 
 ############################################################################################################################################################################
@@ -19,113 +30,147 @@ class Node():
 
 class Tree():
     def __init__(self, permutated_matrix):
-        """Inicjalizacja roota klasy Node. Dostaje wszystkie mozliwe wiersze z pliku. 
-        Losujemy bez zwracania kolumny, ktorych liczba odpowiada zadeklarowanej liczbie n_features.
-        """
 
-        self.root = Node(None, None, range(len(permutated_matrix)), np.random.choice(range(len(permutated_matrix[0])-1), size = n_features, replace = False) )
+        """Stworzenie drzewa. Kazde drzewo przechowuje:
+        tree.root: odwolanie do korzenia drzewa
+        tree.permutated_matrix: permutacja macierzy X otrzymana w wyniku losowania wierszy ze zwracaniem.
+        tree.ooberr: wartosc OOB obliczana dla danego drzewa w przypadku klasyfikacji
+        tree.out_of_bag: numery wierszy out_of_bag nie wykorzystane podczas uczenia danego drzewa"""
+
+        self.root = Node(None, None, range(len(permutated_matrix)), np.random.choice(range(len(permutated_matrix[0])-1), size=n_features, replace=False))
         self.permutated_matrix = permutated_matrix
         self.ooberr = None
         self.out_of_bag = None
 
 
     def insert(self, node):
-        #zwraca 3 elemenetowa liste: [wiesz, kolumna, wartosc wg ktorej dzielimy]
-        if not self.criterium(node.rows, node.random_features): #jesli min_gini wychodzi dla podzialu kiedy w jednym lisciu jest zero elementow to
-            node.decision = self.major_decision(node.rows) #funkcja criterium zwroci false => podany node jest lisciem wyjdz z funkcji, w innym przypadku criterium 
-            print node.decision
-            return 
-        #zakladamy ze jesli criterium zwraca krotke to jest mozliwy podzial na dwa nody
-        node.indexes = self.criterium(node.rows, node.random_features) # each time new tree has new list_of_permuted_rows  (row, column, value)
-        node.left = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size = n_features, replace = False) )
-        node.right = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size = n_features, replace = False) )
-        #przechowywane w root jako indexes
-        selected_feature_column = node.indexes[1] #kolumna
-        value_in_node = node.indexes[2] #wartosc wg ktorej dzielimy
+
+        """Buduje drzewo rekurencyjnie po przez sprawdzenie warunkow specyficznych dla:
+        regresji: ilosc wierszy w node <= 3
+        klasyfikacji: brak mozliwosci uzyskania czystego podzialu na klasy lub otrzymanie czystego podzialu.
+        Kryterium (self.criterium) podzialu jest wybierane na podstawie wartosci zmiennej 
+        globalnej called_class(regression lub classification). Kryterium zwraca False w przypadku,
+        gdy podzial nie jest mozliwy, node klasyfikowany jest jako lisc i przechowuje decyzje. 
+        W innym przypadku self.criterium zwraca indexes wg ktorego nastapi podzial w tym node."""
+
+        if not self.criterium(node.rows, node.random_features):
+            node.decision = self.major_decision(node.rows)
+            return
+        node.indexes = self.criterium(node.rows, node.random_features)
+        node.left = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size=n_features, replace=False))
+        node.right = Node(None, None, [], np.random.choice(range(len(self.permutated_matrix[0])-1), size=n_features, replace=False))
+        selected_feature_column = node.indexes[1]
+        value_in_node = node.indexes[2]
+
+        """Wszystkie wartosci z danej kolumny porownujemy z value_in_node 
+        i dokonujemy podzialu na lewe (<=) i prawe (>) dziecko."""
 
         for row in node.rows:
-            if self.compare(selected_feature_column, self.permutated_matrix[row][selected_feature_column], value_in_node): #if true go left else go right
+            if self.compare(selected_feature_column, self.permutated_matrix[row][selected_feature_column], value_in_node):
                 node.left.rows.append(row)
             else:
                 node.right.rows.append(row)
         self.insert(node.left)
         self.insert(node.right)
 
+
     def criterium(self, rows, columns):
+
         if called_class == "regression":
             return self.rss(rows, columns)
         elif called_class == "classification":
             return self.gini(rows, columns)
 
+
+
     def gini(self, rows, features):
+
+        """Oblicza index Giniego wg ktorego wybierana jest najlepsza cecha do podzialu w node.
+        Index Giniego nie jest obliczany i funkcja zwraca False (node jest lisciem), 
+        gdy otrzymana zostala czysta klasa decyzyjna (tylko True lub tylko False).
+        """ 
+
         node_decisions = [self.permutated_matrix[row][-1] for row in rows]
-        if sum(node_decisions) == 0 or sum(node_decisions) == len(node_decisions): #jesli same false albo true
-            return False #ten node nie potrzebuje dzielenia jest lisciem
-        gini = 1000
+        if sum(node_decisions) == 0 or sum(node_decisions) == len(node_decisions):
+            return False
+
+        """Gini przyjmuje wartosci od 0 do 1. Optymalny podzial odpowiada min wartosci indexu Giniego.
+        Porownywane sa wartosci actual_gini z gini. Poczatkowa wartosc gini zostala zawyzona."""
+
+        gini = 10
         indexes = []
         best_left_decisions = []
         best_right_decisions = []
         n = float(len(rows))
-        n_Ls = [] #zapisujemy wartosci n_L i n_R zeby zlapac warunek stopu kiedy kazdy mozliwy podzial wedlug cech nie daje rozdzialu 
+        n_Ls = []
         n_Rs = []
-        #znajdz wartosc gini dla wybranych wierszy i wylosowanych kolumn
         for row in rows:
-            for column in features: 
-                value_to_compare = self.permutated_matrix[row][column] #wartosc wedlug ktorej dzielimy
+            for column in features:
+                value_to_compare = self.permutated_matrix[row][column] 
                 rows_left = []
                 rows_right = []
-                #porownaj wartosci z innych wierszy w tej kolumnie zeby rozdzielic na lewe i prawe dziecko
+
                 for row2 in rows:
                     if self.compare(column, self.permutated_matrix[row2][column], value_to_compare):
                         rows_left.append(row2)
                     else:
                         rows_right.append(row2)
                 n_L = float(len(rows_left))
-                n_R = float(len(rows_right)) #float to prevent calkowite dzielenie i zaokroglenie
-                left_decisions = [self.permutated_matrix[row][-1] for row in rows_left] #lista true false
+                n_R = float(len(rows_right))
+                left_decisions = [self.permutated_matrix[row][-1] for row in rows_left]
                 right_decisions = [self.permutated_matrix[row][-1] for row in rows_right]
-                n_l0 = sum(left_decisions) #ilosc decyzji True
-                n_l1 = n_L - n_l0          #ilosc decyzji False
+                n_l0 = sum(left_decisions)
+                n_l1 = n_L - n_l0
                 n_r0 = sum(right_decisions)
                 n_r1 = n_R - n_r0
-                if n_L == 0: #nie chcemy dzielenia na jedna strone bo bez sensu wiec sztucznie zwiekszamy wartosc actual_gini
-                    #actual_gini = n_R/n*(n_r0/n_R*(1 - n_r0/n_R) + n_r1/n_R*(1 - n_r1/n_R))
-                    actual_gini = gini + 100                
-                elif n_R == 0:
-                    #actual_gini = n_L/n*(n_l0/n_L*(1 - n_l0/n_L) + n_l1/n_L*(1 - n_l1/n_L))
+
+                if n_L == 0: 
                     actual_gini = gini + 100
+
+                elif n_R == 0:
+                    actual_gini = gini + 100
+
                 else:
                     actual_gini = n_L/n*(n_l0/n_L*(1 - n_l0/n_L) + n_l1/n_L*(1 - n_l1/n_L)) + n_R/n*(n_r0/n_R*(1 - n_r0/n_R) + n_r1/n_R*(1 - n_r1/n_R))
+
                 if actual_gini < gini:
                     gini = actual_gini
                     indexes = [row, column, value_to_compare]
                     best_left_decisions = left_decisions
                     best_right_decisions = right_decisions
 
-        if [a*b for a,b in zip(n_Ls,n_Rs)] == 0: #jesli mnozenie skalarne daje 0 to znaczy, ze wyczerpala sie mozliwosc podzialu za pomoca wylosowanych cech
+            """Jesli mnozenie skalarne daje 0 to znaczy, ze wyczerpana zostala mozliwosc podzialu za pomoca wylosowanych cech"""
+
+        if [a*b for a, b in zip(n_Ls, n_Rs)] == 0:
             return False
-        elif gini == 0: #czyste rozdzielenie na klasy
+        elif gini == 0:
             return False
         else:
-            return indexes #zwraca indexy cech po ktorych nastepuje podzial
+            return indexes
+
+
 
     def rss(self, rows, features):
-        if len(rows) <= 3: #warunek stop nie dzielimy dalej jest to lisc
-            print rows
+
+        """Oblicza blad sredniokwadratowy (RSS) w przypadku regresji.
+        Warunkiem zakonczenia podzialow jest liczba wierszy w node < 3."""
+
+        if len(rows) <= 3:
             return False
-        rss = 10000000000000          #nie mozna dawac tu wartosci
+
+        rss = 10000000000000
         indexes = []
         for row in rows:
             for column in features:
-                value_to_compare = self.permutated_matrix[row][column] #wartosc wedlug ktorej dzielimy
+                value_to_compare = self.permutated_matrix[row][column]
                 rows_left = []
                 rows_right = []
-                #porownaj wartosci z innych wierszy w tej kolumnie zeby rozdzielic na lewe i prawe dziecko
+
                 for row2 in rows:
                     if self.compare(column, self.permutated_matrix[row2][column], value_to_compare):
                         rows_left.append(row2)
                     else:
-                        rows_right.append(row2) 
+                        rows_right.append(row2)
                 left_decisions = [self.permutated_matrix[row][-1] for row in rows_left]
                 if len(left_decisions) == 0:
                     rss_actual = rss + 100
@@ -136,20 +181,28 @@ class Tree():
                     rss_actual = rss + 100
                 else:
                     yR = sum(right_decisions)/float(len(right_decisions))
-                    rss_actual = sum([(decision - yL)**2 for decision in left_decisions]) + sum([(decision - yR)**2 for decision in right_decisions]) 
+                    rss_actual = sum([(decision - yL)**2 for decision in left_decisions]) + sum([(decision - yR)**2 for decision in right_decisions])
                 if rss_actual < rss:
                     rss = rss_actual
                     indexes = [row, column, value_to_compare]
-        print "indexes", indexes
+
         return indexes
 
     def compare(self, selected_feature_column, value_to_be_compared, value_to_compare):
-        if input_features_type[selected_feature_column] == "number": #zmienne typu liczbowego, rozdzial na zasadzie <=
-            if value_to_be_compared <= value_to_compare: #go left
+
+        """Warunkuje sposob podzialu w node w zaleznosci od typu danych:
+        typ number: <=
+        typ mixed: =
+        Jesli porownywanie wartosci daje wynik:
+        True: dany wiersz dodawany jest do lewego syna
+        False: dany wiersz dodwany jest do prawego syna"""
+
+        if input_features_type[selected_feature_column] == "number":
+            if value_to_be_compared <= value_to_compare:
                 return True
             else:
                 return False
-        elif input_features_type[selected_feature_column] == "mixed": #zmienne typu wyliczeniowego, rozdzial na zasadzie ==
+        elif input_features_type[selected_feature_column] == "mixed":
             if value_to_be_compared == value_to_compare:
                 return True
             else:
@@ -158,115 +211,145 @@ class Tree():
             return ValueError
 
     def major_decision(self, rows):
-        """Pobiera wiersze wykorzystywane przez dany Node i porownuje decyzje dla kazdego wiersza z decyzja w wejsciowej macierzy (M).
-        Oblicza decyzje wiekszosciowa w lisciu. Major decision jest obliczane jako suma decyzji True/False. Suma decyzji jest iloscia True. 
-        Gdy suma dzielona przez dlugosc > 0.5 to decyzja wiekszosciowa == True"""
 
-        decisions = [self.permutated_matrix[row][-1] for row in rows] #w przypadku called_class = regresja sa to wartosci, 
-        #natomiast w przypadku klasyfikacji sa to false true
+        """Pobiera wiersze wykorzystywane przez dany Node i porownuje decyzje
+        dla kazdego wiersza z decyzja w permutated_matrix. Oblicza i zwraca decyzje wiekszosciowa
+        w lisciu. Major decision jest obliczane jako suma decyzji True/False, w przypadku regresji
+        suma wartosci. Suma decyzji jest iloscia True. Gdy suma dzielona przez dlugosc > 0.5
+        to decyzja wiekszosciowa == True."""
+
+        decisions = [self.permutated_matrix[row][-1] for row in rows]
         if called_class == "classification":
             if float(sum(decisions))/len(decisions) > 0.5:
                 return True
             else:
-                return False 
+                return False
         elif called_class == "regression":
             return float(sum(decisions)) /len(decisions)
 
+
     def go_through(self, node, row):
+
+        """Klasyfikacja nowych danych. Przechodzi przez drzewo zaczynajac od korzenia 
+        i zwraca decyzje przechowywana w lisciu (node_decisions)."""
+
         if node.left is None:
             return node.decision
         else:
             feature_column = node.indexes[1]
-            if input_features_type[feature_column] == "number": #zmienne typu liczbowego
+            if input_features_type[feature_column] == "number":
                 if row[feature_column] <= node.indexes[2]:
                     return self.go_through(node.left, row)
                 else:
                     return self.go_through(node.right, row)
-            elif input_features_type[feature_column] == "mixed": #zmienne typu wyliczeniowego
+            elif input_features_type[feature_column] == "mixed":
                 if row[feature_column] == node.indexes[2]:
                     return self.go_through(node.left, row)
                 else:
                     return self.go_through(node.right, row)
-            else:
-                print "blaaaaaaaad"
 
 ##################################################################################################################################################
 ####  RANDOM FOREST CLASSIFIER  
 ##################################################################################################################################################
 
 class RandomForestClassifier():
+
+    """Przyjmuje parametr zdefiniowany przez uzytkownika n_features_user."""
+
     def __init__(self, n_features_user):
         self.n_features = n_features_user
         self.random_forest = []
         self.input_matrix = None
     
     def fit(self, X, y):
-        """uczy klasyfikator na zbiorze treningowym"""
-        global called_class #
+
+        """Uczy klasyfikator na zbiorze treningowym. Inicjuje budowe lasu."""
+
+        global called_class
         called_class = "classification"
         global n_features
-        global input_features_type 
-        global input_matrix
-        M = self.konwerter(X,y)
-        input_matrix = M
-        input_features_type = self.checkFeaturesType(M) 
         n_features = self.n_features
+        global input_features_type
+        M = self.konwerter(X, y)
+        input_features_type = self.checkFeaturesType(M)
+        global input_matrix
+        input_matrix = M
         self.input_matrix = M
         self.build_random_forest()
 
+        print "CLASSIFIER. Random Forest Was Build. It has %d trees" % len(self.random_forest)
+
+        for tree in self.random_forest:
+            print "\n tree out_of_bag  ", out_of_bag
+
     def konwerter(self, X, y):
-        """laczy macierz z decyzjami, gdzie decyzje dolaczone 
-        w ostatniej kolumnie w macierzy reprezentowane sa jako 0/1 zamiast booli"""
-        p = np.column_stack( [X, y] ) 
+
+        """Laczy macierz X z decyzjami y, gdzie decyzje dolaczone
+        sa do ostatniej kolumnie w macierzy. Reprezentowane sa w przypadku klasyfikacji
+        jako 0/1 zamiast False/True."""
+
+        p = np.column_stack([X, y])
         list_of_lists = np.array(p).tolist()
-        return list_of_lists    
+        return list_of_lists
 
     def checkFeaturesType(self, X):
-        #matrix wypelniona none o jedna kolumne mniejsza bedzie przechowywac false jesli int or float, 
-        #oraz true jesli inaczej -> suma kolumny 0 tylko jesli same liczby do list_of_feauters dodaje "number"
-        feature_type_matrix = [[None for i in range(len(X[0])-1)] for j in range(len(X))] 
+
+        """Sprawdzenie wszystich wartosci zawartych w macierzy X pod katem typu danych.
+        Generuje macierz zlozona z True/False w zaleznosci od typu danych:
+        zmienne typu wyliczeniowego: True
+        zmienne typu liczbowego: False.
+        Jezeli wartosci w danej kolumnie sa niejednorodne to cala kolumna jest typu mixed.
+        Zwraca liste typow danych w poszczegolnych kolumnach."""
+
+
+        feature_type_matrix = [[None for i in range(len(X[0])-1)] for j in range(len(X))]
         for row, vector in  enumerate(X):
             for column, value in enumerate(vector[:-1]):
                 if type(X[row][column]) == int or type(X[row][column]) == float:
-                    feature_type_matrix[row][column] = False #zmienne typu liczbowego w kolumnie
+                    feature_type_matrix[row][column] = False
                 else:
-                    feature_type_matrix[row][column] = True #zmienne typu wyliczeniowwgo w kolumnie
+                    feature_type_matrix[row][column] = True
 
         list_of_features = []
         for column in range(len(feature_type_matrix[0])):
             summ = 0
-            for row in range(len(feature_type_matrix)): #sprawdzenie typu wartosci w kolumnach, suma wartosci True i False w kolumnach
+            for row in range(len(feature_type_matrix)):
                 summ += feature_type_matrix[row][column]
-            if summ == 0: #kolumna typu liczbowego (suma False)
+            if summ == 0:
                 list_of_features.append("number")
             else:
-                list_of_features.append("mixed") #kolumna typu wyliczeniowego (suma False i True)
- 
+                list_of_features.append("mixed")
+
         return list_of_features
 
 
     def predict(self, Xarray):
-        """przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m. 
-        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest 
-        i generuje najbardziej prawdopodobna decyzje. Wynikiem jest wektor dlugosci macierzy wejsciowej."""
+
+        """Przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m.
+        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest
+        i generuje najbardziej prawdopodobna decyzje na podstawie decyzji wiekszosciowej.
+        Zwraca wektor dlugosci macierzy wejsciowej."""
+
         X = np.array(Xarray).tolist()
         final_decision = []
-        for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
-            decyzje =[tree.go_through(tree.root, v) for tree in self.random_forest] 
+        for v in X:
+            decyzje = [tree.go_through(tree.root, v) for tree in self.random_forest]
             if decyzje.count(True)/float(len(decyzje)) > 0.5:
                 final_decision.append(True)
             else:
-                final_decision.append(False)          
+                final_decision.append(False)
         return final_decision
 
     def predict_proba(self, X):
-        """Zwraca prawdopodobienstwo przynaleznosci przykladow z X do pierwszej klasy(major_decision)"""
-        all_decisions = [] #tablica wszystkich decyzji dla kazdego wiersza i drzewa
+
+        """Zwraca prawdopodobienstwo przynaleznosci przykladow z X do klasy wystepujacej jako pierwsza."""
+
+        all_decisions = []
         for row in X:
             decisions = []
             for tree in self.random_forest:
                 if go_through(tree.root, row):
-                    decison = True
+                    decision = True
                 else:
                     decision = False
                 decisions.append(decison)
@@ -274,65 +357,69 @@ class RandomForestClassifier():
 
         for decision in all_decisions[0]:
             if float(sum(all_decisions[0]))/len(all_decisions) > 0.5:
-                major_decision = True #major_decision w 0 wiersz = pierwsza klasa
+                major_decision = True
             else:
                 major_decision = False
 
         proba_lista = []
         for decisions in all_decisions:
-            if major_decision: #if True
-                proba_lista.append(float(sum(decisons))/ len(decisons))
-            else: #if False
-                proba_lista.append(1-(float(sum(decisons))/ len(decisons)))
+            if major_decision:
+                proba_lista.append(float(sum(decisions))/ len(decisions))
+            else: 
+                proba_lista.append(1-(float(sum(decisions))/ len(decisions)))
         return proba_lista
 
 
     
     def build_random_forest(self):
-        """buduje las losowy. Tworzy 21 pierwszych drzew i sprawdza stabilizacje bledu OOB. 
-        W przypadku braku stabilizacji powieksza las"""
+
+        """Buduje las losowy. Tworzy 21 pierwszych drzew i w przypadku klasyfikacji sprawdza stabilizacje bledu OOB.
+        W przypadku braku stabilizacji powieksza las o kolejne drzewo i ponownie sprawdza stabilizacje OBB.
+        Powtarza ten krok do momentu ustabilizowania wartosci OOB."""
+
         counter = 0
         while counter < 21:
             counter += 1
-            self.random_forest.append(self.buildTree())#budowanie drzewa, losowanie wierszy w buildTree 
+            self.random_forest.append(self.buildTree())
         if called_class == "classification":
-            while self.find_ooberr() > 0.01:  #ooberr liczymy dla ostatnich 10 drzew lasu
-                #print "oober_10", self.find_ooberr()
+            while self.find_ooberr() > 0.01:
                 self.random_forest.append(self.buildTree())
 
-            for tree in self.random_forest:
-                print "tree_ooberr:  ", tree.ooberr
-
-        print "random forest was build and contain %d trees" % len(self.random_forest)    
-
-
     def buildTree(self):
-        """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix). 
+
+        """Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix).
         Losowanie wierszy ze zwracaniem, zachowujac wysokosc macierzy.
-        Sprawdza zmiane stosunku decyzji zeby zapobiec pobieraniu jednotypowych decyzji"""
+        Sprawdza zmiane stosunku decyzji True do False aby zapobiec wykorzystywaniu decyzji jednego typu.
+        Jezeli stosunek decyzji nie jest zgodny z zalozeniem permutowana macierz generowana jest powtornie.
+        Dla kazdego drzewa generowana jest nowa, permutowana macierz przez losowanie wierszy ze zwracaniem.
+        Wierze, ktorych nie uzyto do uczenia danego drzewa sa przechowywane w tree.out_of_bag i wykorzystywane do obliczania ooberr.
+        Metoda zwraca drzewo."""
+
         permutated_matrix = []
-        rows_random = np.random.choice(range(len(self.input_matrix)), size = len(self.input_matrix), replace = True)
-        rows_random.sort() #losuje wiersze nowej tablicy ze zwracaniem 
-        out_of_bag = list(set(range(len(self.input_matrix)))-set(rows_random))  #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-        for row in rows_random: 
+        rows_random = np.random.choice(range(len(self.input_matrix)), size=len(self.input_matrix), replace=True)
+        rows_random.sort()
+        out_of_bag = list(set(range(len(self.input_matrix)))-set(rows_random))
+        for row in rows_random:
             permutated_matrix.append(self.input_matrix[row])
         if called_class == "classification":
-            if self.check_decision_proportion(permutated_matrix):  #sprawdza podobienstwo proporcji klas decyzyjnych. 
-                tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
-                tree.insert(tree.root) #budowanie Node
-                tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-                return tree      
+            if self.check_decision_proportion(permutated_matrix):
+                tree = Tree(permutated_matrix)                
+                tree.insert(tree.root)
+                tree.out_of_bag = out_of_bag
+                return tree
             else:
-                return self.buildTree() #w przypadku, gdy proporcja klas decyzyjnych nie spelnia zalozen powtornie losuje wiersze i kolumny             
+                return self.buildTree()
         elif called_class == "regression":
-            tree = Tree(permutated_matrix)                                   #Gdy spelnia zalozenia budowane jest nowe drzewo na podstawie losowo wygenerowanej tablicy.  
-            tree.insert(tree.root) #budowanie Node
-            tree.out_of_bag = out_of_bag #wierszy ktorych nie uzyto do uczenia tego drzewa uzyjemy przy obliczeniu ooberr
-            return tree   
+            tree = Tree(permutated_matrix)
+            tree.insert(tree.root)
+            tree.out_of_bag = out_of_bag
+            return tree
 
     def check_decision_proportion(self, permutated_matrix):
-        """Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.  
+
+        """Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.
         Zwraca True jesli proporcja pomiedzy decyzjami jest wieksza rowna 0.5"""
+
         input_decision_list = []
         output_decision_list = []
 
@@ -340,11 +427,11 @@ class RandomForestClassifier():
             input_decision_list.append(self.input_matrix[row][-1])
             output_decision_list.append(permutated_matrix[row][-1])
 
-        if input_decision_list.count(True)==0 or input_decision_list.count(False) == 0:
+        if input_decision_list.count(True) == 0 or input_decision_list.count(False) == 0:
             print "The training set is unvalid, contain only one decision class"
             return False
-        a = float(input_decision_list.count(True))       
-        if output_decision_list.count(True)==0 or output_decision_list.count(False) == 0 :
+        a = float(input_decision_list.count(True))
+        if output_decision_list.count(True) == 0 or output_decision_list.count(False) == 0:
             print "The output set is unvalid, contain only one decision class"
             return False
         b = float(output_decision_list.count(True))
@@ -353,44 +440,48 @@ class RandomForestClassifier():
             return False
 
         return True
-        
 
     def find_ooberr(self):
-        """ kazde drzewo ma self.ooberr { {nr_wierszu : [lista decyzji otrzymnych przy go_through przez 
-        drzewa gdzie ten wiersz byl w out_of_bag], ....}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}"""
+
+        """Kazde drzewo ma przypisany slownik tree.ooberr { {nr_wiersza : [lista decyzji otrzymanych w wyniku przejscia przez
+        drzewa (go_through) dla wierszy z out_of_bag], ...}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}.
+        Zmiana wartosci ooberr wyliczana jest dla ostatnich 20 drzew."""
+
         for index, tree in enumerate(self.random_forest):
-            if tree.ooberr == None: #czyli dla tego drzewa ooberr jeszcze nie byl liczony
+            if tree.ooberr is None: 
                 tree.ooberr = self.update(index-1)
-        
-        ooberr_20 =  self.random_forest[-21].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-20,0,1)])/20 #sprawdza oober_20 dla 10 ostatnio powstalych drzew
+        ooberr_20 =  self.random_forest[-21].ooberr["ooberr_value"] - sum([self.random_forest[index].ooberr["ooberr_value"] for index in range(-20, 0, 1)])/20
         return ooberr_20
 
 
 
     def update(self, tree_index):
-        if tree_index == -1: #musimy po raz pierwszy stworzyc dictionary
-            known_ooberr_dict = {"ooberr_dict":{},"ooberr_value":None}
+
+        """Oblicza ooberr dla kazdego zbudowanego drzewa.
+        Tworzy i zwraca slownik known_ooberr_dict tylko w przypadku klasyfikacji.
+        """
+
+        if tree_index == -1:
+            known_ooberr_dict = {"ooberr_dict":{}, "ooberr_value":None}
         else:
-            known_ooberr_dict = copy.deepcopy(self.random_forest[tree_index].ooberr)  
-        
+            known_ooberr_dict = copy.deepcopy(self.random_forest[tree_index].ooberr)
         for row in self.random_forest[tree_index+1].out_of_bag:
             tree = self.random_forest[tree_index+1]
-            if called_class == "classification":
-                predicted_decision = False
-                if tree.go_through(tree.root, self.input_matrix[row][:-1]):
-                    predicted_decision = True
-            elif called_class == "regression":
-                predicted_decision = tree.go_through(tree.root, self.input_matrix[row][:-1]) 
+            predicted_decision = False
+
+            if tree.go_through(tree.root, self.input_matrix[row][:-1]):
+                predicted_decision = True
 
             if not row in known_ooberr_dict["ooberr_dict"]:
                 known_ooberr_dict["ooberr_dict"][row] = []
 
             known_ooberr_dict["ooberr_dict"][row].append(predicted_decision)
 
-        #wybierajac major decision na kazdej liscie i porownujac z decyzja prawidlowa obliczamy ration i zapisujemy do ooberr_value
+        """Oblicza stosunek prawidlowych decyzji do wszystkich decyzji dla danego wiersza."""
+
         list_right_vs_major_decision = []
         for row in known_ooberr_dict["ooberr_dict"]:
-            if known_ooberr_dict["ooberr_dict"][row]: #jesli lista decyzji nie jest pusta
+            if known_ooberr_dict["ooberr_dict"][row]:
                 right_decision = self.input_matrix[row][-1]
                 trues = sum(known_ooberr_dict["ooberr_dict"][row])
                 falses = len(known_ooberr_dict["ooberr_dict"][row]) - trues
@@ -399,7 +490,7 @@ class RandomForestClassifier():
                 else:
                     major_decision = False
 
-                list_right_vs_major_decision.append(abs(right_decision - major_decision)) #0 if true (means that right and major decision are the same)
+                list_right_vs_major_decision.append(abs(right_decision - major_decision))
 
         known_ooberr_dict["ooberr_value"] = float(sum(list_right_vs_major_decision))/len(list_right_vs_major_decision)
         return known_ooberr_dict
@@ -409,11 +500,17 @@ class RandomForestClassifier():
 ####RANDOM FOREST REGRESSOR
 ####################################################################################################################################################################################
 
-class RandomForestRegressor(RandomForestClassifier): #dodane rss do tree
+class RandomForestRegressor(RandomForestClassifier): 
+    
+    """Klasa regresji dziedziczy wiekszosc metod z klasy RandomForestClassifier."""
+
     def __init__(self, n_features_user):
         RandomForestClassifier.__init__(self, n_features_user)
 
     def fit(self, X, y):
+
+        """Uczy regresor na zbiorze treningowym. Inicjuje budowe lasu."""
+
         global n_features
         n_features = self.n_features
         global called_class
@@ -422,25 +519,25 @@ class RandomForestRegressor(RandomForestClassifier): #dodane rss do tree
         self.input_matrix = self.konwerter(X,y)
 
         global input_features_type
-        input_features_type = self.checkFeaturesType(self.input_matrix)  
-        print len(X[0])
-        print "dlugosc", len(input_features_type)
-        
+        input_features_type = self.checkFeaturesType(self.input_matrix)
         self.build_random_forest()
 
+        for tree in self.random_forest:
+            print "\n REGRESSION: tree out_of_bag  ", out_of_bag
 
 
     def predict(self, X):
-        """przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m. 
-        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest 
-        i generuje najbardziej prawdopodobna decyzje. Wynikiem jest wektor dlugosci macierzy wejsciowej."""
+
+        """przewiduje najbardziej prawdopodobne klasy przykladow w X; zwraca wektor dlugosci m.
+        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest
+        i oblicza srednia wartosc w lisciu. Wynikiem jest wektor dlugosci macierzy wejsciowej."""
+
         final_decision = []
-        for v in X: #sprawdzamy decyzje wiekszosciowa, prog 0.5 
-            decisions= [tree.go_through(tree.root, v) for tree in self.random_forest]  
-            #wiersz decyzji ptrzymany po przechodzeniu po wszystkich drzewach w random forest
+        for v in X: 
+            decisions= [tree.go_through(tree.root, v) for tree in self.random_forest]
             average = sum(decisions)/float(len(decisions))
             final_decision.append(average)
-         
+
         return final_decision
 
 
@@ -450,30 +547,30 @@ class RandomForestRegressor(RandomForestClassifier): #dodane rss do tree
 class Test():
 
     def k_mers(self, k=4):
+
         """Tworzy wszystkie mozliwe kombinacje k-merow"""
+
         bases = ['A', 'T', 'G', 'C']
-        #poszukiwanie tetramerow
-        list_of_k_mers = [''.join(p) for p in itertools.product(bases, repeat = k)]
+        list_of_k_mers = [''.join(p) for p in itertools.product(bases, repeat=k)]
         return list_of_k_mers
 
     def build_test_string_set(self):
+
         list_of_4_mers = self.k_mers()
         with open("enhancers_heart.fa", "r") as enhancers:
-            enhancers_lines = enhancers.readlines() #lista linijek z pliku
+            enhancers_lines = enhancers.readlines()
         with open("random.fa", "r") as random:
             random_lines = random.readlines()
         global X
         global Y
-        X = [] #tablica zliczen wystapien 4 merow wraz z decyzja na -1 miejscu 
+        X = []
         Y = []
         for sequence in enhancers_lines:
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            #k_mer_repetition.append(True)
             X.append(k_mer_repetition)
             Y.append(True)
         for sequence in random_lines: 
             k_mer_repetition = [sequence.count(a) for a in list_of_4_mers]
-            #k_mer_repetition.append(False)
             X.append(k_mer_repetition)
             Y.append(False)
 
@@ -482,4 +579,4 @@ class Test():
 ############################################################################################################################################
 if __name__  == "__main__":
     Test().build_test_string_set()
-    RandomForestClassifier(16).fit(X,Y)
+    RandomForestClassifier(16).fit(X, Y)
