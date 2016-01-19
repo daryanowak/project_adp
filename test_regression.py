@@ -1,4 +1,4 @@
-import drzewo_dodana_regresja
+import randomforests
 import numpy, copy, random
 from sklearn.ensemble import RandomForestRegressor as sklearnRandomForestRegressor
 from sklearn import preprocessing
@@ -47,7 +47,7 @@ def cross_val_scores(r, X, y, cv):
         scores.append(mean_squared_error(r.predict(X[test]), y[test]))
     return scores
 
-r = drzewo_dodana_regresja.RandomForestRegressor(3)
+r = randomforests.RandomForestRegressor(3)
 sr = sklearnRandomForestRegressor()
 sklearn_scores = cross_val_scores(sr, X_mod, y, 10)
 print "sklearn mean squared error:", sklearn_scores
