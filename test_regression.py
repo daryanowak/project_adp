@@ -38,6 +38,7 @@ X = numpy.array(X)
 X_mod = numpy.array(X_mod)
 y = numpy.array(y)
 
+print "y", y
 def cross_val_scores(r, X, y, cv):
     kf = cross_validation.KFold(n=len(X), n_folds=cv)
     scores = []
@@ -46,7 +47,7 @@ def cross_val_scores(r, X, y, cv):
         scores.append(mean_squared_error(r.predict(X[test]), y[test]))
     return scores
 
-r = RandomForestRegressor(5)
+r = drzewo_dodana_regresja.RandomForestRegressor(3)
 sr = sklearnRandomForestRegressor()
 sklearn_scores = cross_val_scores(sr, X_mod, y, 10)
 print "sklearn mean squared error:", sklearn_scores

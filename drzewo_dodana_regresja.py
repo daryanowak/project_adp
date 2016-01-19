@@ -180,7 +180,7 @@ class Tree():
                     rss_actual = rss + 100
                 else:
                     yL = sum(left_decisions)/float(len(left_decisions))
-                right_decisions = [self.permutated_matrix[row][-1] for row in rows_right]
+                right_decisions = [float(self.permutated_matrix[row][-1]) for row in rows_right]
                 if len(right_decisions) == 0:
                     rss_actual = rss + 100
                 else:
@@ -228,6 +228,7 @@ class Tree():
             else:
                 return False
         elif called_class == "regression":
+            decisions = [float(self.permutated_matrix[row][-1]) for row in rows]
             return float(sum(decisions)) /len(decisions)
 
 
@@ -540,18 +541,18 @@ class RandomForestRegressor(RandomForestClassifier):
         RandomForestClassifier.__init__(self, n_features_user)
 
     def fit(self, X, y):
-
+        print "y_fiit", y
         def check_type(lista):
             for element in lista:
-                if str(element).isdigit():
+                if type(element) == float or type(element) == int:
                     return True
             return False
 
         """Uczy regresor na zbiorze treningowym. Inicjuje budowe lasu."""
         if not len(X) == len(y):
             sys.exit("Pierwszy wymiar X i dlugosc y nie sa rowne!")
-        if not check_type(y):
-            sys.exit("Decyzje musza byc numeryczne")
+        #if not check_type(y):
+        #    sys.exit("Decyzje musza byc numeryczne")
         global n_features
         n_features = self.n_features
         global called_class
@@ -573,12 +574,12 @@ class RandomForestRegressor(RandomForestClassifier):
         if len(X[0]) != len(self.input_matrix[0])-1:
             sys.exit("Wymiar wiersza nie jest wlasciwy")
         feature_types = self.checkFeaturesType(self.input_matrix)
-        for row in range(len(X)):
+        """for row in range(len(X)):
             for index,element in enumerate(X[row]):
                 if feature_types[index] == "mixed":
                     input_column = [self.input_matrix[i][index] for i in range(len(self.input_matrix))]
                     if not element in input_column:
-                        sys.exit("Wartosc nie wystepowala w odpowiedniej kolumnie zbioru uczacego")
+                        sys.exit("Wartosc nie wystepowala w odpowiedniej kolumnie zbioru uczacego")"""
         final_decision = []
         for v in X: 
             decisions= [tree.go_through(tree.root, v) for tree in self.random_forest]

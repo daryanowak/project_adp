@@ -3,7 +3,16 @@ import numpy
 from sklearn import datasets
 from sklearn import cross_validation
 from sklearn.ensemble import RandomForestClassifier
-from mapowanie import *
+#from mapowanie import *
+
+def mapping(cos):
+    a = cos[0]
+    for i in range(len(cos)):
+        if cos[i]==a:
+            cos[i] = 0
+        else:
+            cos[i] = 1
+    return cos
 
 iris = datasets.load_iris()
 X_easy = iris.data[:100,:]
@@ -11,13 +20,16 @@ print "X_easy", X_easy
 y_easy = iris.target[:100]
 print "y_easy", y_easy
 y_i = mapping(y_easy)
-print "y_i", y_i
+print "y_ivhgfxfghkjljhgcfs", y_i
 X_hard = iris.data[50:,:]
 y_hard = iris.target[50:]
-y_h = mapping(y_hard)
+
+print "y_innnnnnn",y_i
+
+
 
 # gives a percentage of correct predictions in 10-fold crossvalidation
-"""def get_crossvalidated_score(r, X, y):
+def get_crossvalidated_score(r, X, y):
 
     kf = cross_validation.KFold(n=len(X), n_folds=10)
     all_cases = 0
@@ -31,22 +43,33 @@ y_h = mapping(y_hard)
         r.fit(X[train], y[train])
         correct += no_correct(r.predict(X[test]), y[test])
         all_cases += len(test)
-    return float(correct) / all_cases"""
-
+    return float(correct) / all_cases
 def get_score(truth, predictions):
     return sum(map(lambda (x, y): 1 if x == y else 0, zip(truth, predictions)))
 
-#sklearn_classifier = RandomForestClassifier()
-#users_classifier = drzewo_dodana_regresja.RandomForestClassifier(3)
+sklearn_classifier = RandomForestClassifier()
+users_classifier = drzewo_dodana_regresja.RandomForestClassifier(3)
 
 # easy case
-#print "Iris setosa vs iris versicolor - sklearn: %f" % get_crossvalidated_score(sklearn_classifier, X_easy, y_easy)
-#print "Iris setosa vs iris versicolor - user's code: %f" % get_crossvalidated_score(users_classifier, X_easy, y_i)
-#users_classifier.fit(X_easy,y_i)
-#users_classifier.predict(X_easy)
+print "Iris setosa vs iris versicolor - sklearn: %f" % get_crossvalidated_score(sklearn_classifier, X_easy, y_easy)
+print "Iris setosa vs iris versicolor - user's code: %f" % get_crossvalidated_score(users_classifier, X_easy, y_i)
+
+
+
+classifier = drzewo_dodana_regresja.RandomForestClassifier(2)
+classifier.fit(X_easy,y_i)
+predictions = classifier.predict(X_easy)
+predictions_proba = classifier.predict_proba(X_easy)
+print "predictions_proba", predictions_proba
+print "custom: %f" % get_score(y_i, predictions)
+
+y_h = mapping(y_hard)
+
 # harder cas
-#print "Iris versicolor vs iris virginica - sklearn: %f" % get_crossvalidated_score(sklearn_classifier, X_hard, y_hard)
-#print "Iris versicolor vs iris virginica - user's code: %f" % get_crossvalidated_score(users_classifier, X_hard, y_h)
+print "Iris versicolor vs iris virginica - sklearn: %f" % get_crossvalidated_score(sklearn_classifier, X_hard, y_hard)
+print "Iris versicolor vs iris virginica - user's code: %f" % get_crossvalidated_score(users_classifier, X_hard, y_h)
+
+
 
 classifier = drzewo_dodana_regresja.RandomForestClassifier(3)
 classifier.fit(X_hard,y_h)
