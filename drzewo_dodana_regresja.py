@@ -175,7 +175,7 @@ class Tree():
                         rows_left.append(row2)
                     else:
                         rows_right.append(row2)
-                left_decisions = [self.permutated_matrix[row][-1] for row in rows_left]
+                left_decisions = [float(self.permutated_matrix[row][-1]) for row in rows_left]
                 if len(left_decisions) == 0:
                     rss_actual = rss + 100
                 else:
@@ -266,19 +266,23 @@ class RandomForestClassifier():
     
     def fit(self, X, y):
 
+        print "y fit", y
+
         """Uczy klasyfikator na zbiorze treningowym. Inicjuje budowe lasu."""
-        def check_type(lista):
+        """def check_type(lista):
             for element in lista:
                 if type(element) != bool:
                     return False
-            return True
-
+            return True"""
+        if not len(X[0]) > self.n_features:
+            sys.exit("Za duzo parametrow, X jest za maly!")
         if not len(X) == len(y):
             sys.exit("Pierwszy wymiar X i dlugosc y nie sa rowne!")
         if not len(sorted(set(y))) == 2:
+            print "y", y
             sys.exit("W wektorze decyzji jest wiecej niz dwie klasy!")
-        if not check_type(y):
-            sys.exit("Decyzje musza byc typu bool")
+        #if not check_type(y):
+        #   sys.exit("Decyzje musza byc typu bool")
         global called_class
         called_class = "classification"
         global n_features
@@ -291,7 +295,7 @@ class RandomForestClassifier():
         self.input_matrix = M
         self.build_random_forest()
 
-        print "Classifiere - Random Forest Was Build. It has %d trees" % len(self.random_forest)
+        print "Classiffier - Random Forest Was Build. It has %d trees" % len(self.random_forest)
 
     def konwerter(self, X, y):
 
