@@ -1,0 +1,241 @@
+Module randomforests
+--------------------
+Created by: Darya Karaneuskaya, Agnieszka Sztyler, Adam Zaborowski, Mariia Savenko
+
+Classes
+-------
+Node 
+    Stworzenie wierzcholka(node). Kazdy node przechowuje:
+    node.left, node.right: odwolanie do lewego i prawego dziecka
+    node.rows: numery wierszy, ktore spelniaja warunek podzialu dla danego node
+    node.random_features: numery losowo wybranych kolumn(cech) dla ktorych obliczany jest index Giniego/RSS i nastepuje podzial
+    node.indexes: [row, column, value_to_compare] indeks i wartosc wg ktorej nastpil podzial w danym node
+    node. decision: przyjmuje wartosc None dla node nie bedacych lisciami. Dla klasyfikacji przechowuje decyzje wiekszosciowa w tym lisciu (True/False). 
+    Dla regresji przechowuje srednia wartosc w tym lisciu.
+
+    Ancestors (in MRO)
+    ------------------
+    randomforests.Node
+
+    Instance variables
+    ------------------
+    decision
+
+    indexes
+
+    left
+
+    random_features
+
+    right
+
+    rows
+
+    Methods
+    -------
+    __init__(self, left, right, rows, random_features)
+
+RandomForestClassifier 
+    Przyjmuje parametr zdefiniowany przez uzytkownika n_features_user.
+
+    Ancestors (in MRO)
+    ------------------
+    randomforests.RandomForestClassifier
+
+    Instance variables
+    ------------------
+    input_matrix
+
+    n_features
+
+    random_forest
+
+    Methods
+    -------
+    __init__(self, n_features_user)
+
+    buildTree(self)
+        Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix).
+        Losowanie wierszy ze zwracaniem, zachowujac wysokosc macierzy.
+        Sprawdza zmiane stosunku decyzji True do False aby zapobiec wykorzystywaniu decyzji jednego typu.
+        Jezeli stosunek decyzji nie jest zgodny z zalozeniem permutowana macierz generowana jest powtornie.
+        Dla kazdego drzewa generowana jest nowa, permutowana macierz przez losowanie wierszy ze zwracaniem.
+        Wierze, ktorych nie uzyto do uczenia danego drzewa sa przechowywane w tree.out_of_bag i wykorzystywane do obliczania ooberr.
+        Metoda zwraca drzewo.
+
+    build_random_forest(self)
+        Buduje las losowy. Tworzy 21 pierwszych drzew i w przypadku klasyfikacji sprawdza stabilizacje bledu OOB.
+        W przypadku braku stabilizacji powieksza las o kolejne drzewo i ponownie sprawdza stabilizacje OBB.
+        Powtarza ten krok do momentu ustabilizowania wartosci OOB.
+
+    checkFeaturesType(self, X)
+        Sprawdzenie wszystich wartosci zawartych w macierzy X pod katem typu danych.
+        Generuje macierz zlozona z True/False w zaleznosci od typu danych:
+        zmienne typu wyliczeniowego: True
+        zmienne typu liczbowego: False.
+        Jezeli wartosci w danej kolumnie sa niejednorodne to cala kolumna jest typu mixed.
+        Zwraca liste typow danych w poszczegolnych kolumnach.
+
+    check_decision_proportion(self, permutated_matrix)
+        Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.
+        Zwraca True jesli proporcja pomiedzy decyzjami jest wieksza rowna 0.5
+
+    find_ooberr(self)
+        Kazde drzewo ma przypisany slownik tree.ooberr { {nr_wiersza : [lista decyzji otrzymanych w wyniku przejscia przez
+        drzewa (go_through) dla wierszy z out_of_bag], ...}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}.
+        Zmiana wartosci ooberr wyliczana jest dla ostatnich 20 drzew.
+
+    fit(self, X, y)
+        Uczy klasyfikator na zbiorze treningowym. Inicjuje budowe lasu.
+
+    konwerter(self, X, y)
+        Laczy macierz X z decyzjami y, gdzie decyzje dolaczone
+        sa do ostatniej kolumnie w macierzy. Reprezentowane sa w przypadku klasyfikacji
+        jako 0/1 zamiast False/True.
+
+    predict(self, X)
+        Przewiduje najbardziej prawdopodobne klasy przykladow w X; wraca wektor dlugosci m.
+        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest
+        i generuje najbardziej prawdopodobna decyzje na podstawie decyzji wiekszosciowej.
+        Zwraca wektor dlugosci macierzy wejsciowej.
+
+    predict_proba(self, X)
+        Zwraca prawdopodobienstwo przynaleznosci przykladow z X do klasy wystepujacej jako pierwsza.
+
+    update(self, tree_index)
+        Oblicza ooberr dla kazdego zbudowanego drzewa.
+        Tworzy i zwraca slownik known_ooberr_dict tylko w przypadku klasyfikacji.
+
+RandomForestRegressor 
+    Klasa regresji dziedziczy wiekszosc metod z klasy RandomForestClassifier.
+
+    Ancestors (in MRO)
+    ------------------
+    randomforests.RandomForestRegressor
+    randomforests.RandomForestClassifier
+
+    Instance variables
+    ------------------
+    input_matrix
+
+    n_features
+
+    random_forest
+
+    Methods
+    -------
+    __init__(self, n_features_user)
+
+    buildTree(self)
+        Funkcja zwraca drzewo zbudowane na podstawie losowowo zbudowanej macierzy(submatrix).
+        Losowanie wierszy ze zwracaniem, zachowujac wysokosc macierzy.
+        Sprawdza zmiane stosunku decyzji True do False aby zapobiec wykorzystywaniu decyzji jednego typu.
+        Jezeli stosunek decyzji nie jest zgodny z zalozeniem permutowana macierz generowana jest powtornie.
+        Dla kazdego drzewa generowana jest nowa, permutowana macierz przez losowanie wierszy ze zwracaniem.
+        Wierze, ktorych nie uzyto do uczenia danego drzewa sa przechowywane w tree.out_of_bag i wykorzystywane do obliczania ooberr.
+        Metoda zwraca drzewo.
+
+    build_random_forest(self)
+        Buduje las losowy. Tworzy 21 pierwszych drzew i w przypadku klasyfikacji sprawdza stabilizacje bledu OOB.
+        W przypadku braku stabilizacji powieksza las o kolejne drzewo i ponownie sprawdza stabilizacje OBB.
+        Powtarza ten krok do momentu ustabilizowania wartosci OOB.
+
+    checkFeaturesType(self, X)
+        Sprawdzenie wszystich wartosci zawartych w macierzy X pod katem typu danych.
+        Generuje macierz zlozona z True/False w zaleznosci od typu danych:
+        zmienne typu wyliczeniowego: True
+        zmienne typu liczbowego: False.
+        Jezeli wartosci w danej kolumnie sa niejednorodne to cala kolumna jest typu mixed.
+        Zwraca liste typow danych w poszczegolnych kolumnach.
+
+    check_decision_proportion(self, permutated_matrix)
+        Sprawdza czy proporcja pomiedzy poszczegolnymi klasami jest podobna do tej w pelnym zbiorze treningowym.
+        Zwraca True jesli proporcja pomiedzy decyzjami jest wieksza rowna 0.5
+
+    find_ooberr(self)
+        Kazde drzewo ma przypisany slownik tree.ooberr { {nr_wiersza : [lista decyzji otrzymanych w wyniku przejscia przez
+        drzewa (go_through) dla wierszy z out_of_bag], ...}, ooberr: wartosc_ooberr_dla_tego_drzewa_uzywana_pozniej_we_wzorze}.
+        Zmiana wartosci ooberr wyliczana jest dla ostatnich 20 drzew.
+
+    fit(self, X, y)
+        Uczy klasyfikator na zbiorze treningowym. Inicjuje budowe lasu.
+
+    konwerter(self, X, y)
+        Laczy macierz X z decyzjami y, gdzie decyzje dolaczone
+        sa do ostatniej kolumnie w macierzy. Reprezentowane sa w przypadku klasyfikacji
+        jako 0/1 zamiast False/True.
+
+    predict(self, X)
+        przewiduje najbardziej prawdopodobne klasy przykladow w X; zwraca wektor dlugosci m.
+        Pobiera macierz przykladowych wektorow bez decyzji, przepuszcza przez kazde drzewo self.random_forest
+        i oblicza srednia wartosc w lisciu. Wynikiem jest wektor dlugosci macierzy wejsciowej.
+
+    predict_proba(self, X)
+        Zwraca prawdopodobienstwo przynaleznosci przykladow z X do klasy wystepujacej jako pierwsza.
+
+    update(self, tree_index)
+        Oblicza ooberr dla kazdego zbudowanego drzewa.
+        Tworzy i zwraca slownik known_ooberr_dict tylko w przypadku klasyfikacji.
+
+Tree 
+    Ancestors (in MRO)
+    ------------------
+    randomforests.Tree
+
+    Instance variables
+    ------------------
+    ooberr
+
+    out_of_bag
+
+    permutated_matrix
+
+    root
+
+    Methods
+    -------
+    __init__(self, permutated_matrix)
+        Stworzenie drzewa. Kazde drzewo przechowuje:
+        tree.root: odwolanie do korzenia drzewa
+        tree.permutated_matrix: permutacja macierzy X otrzymana w wyniku losowania wierszy ze zwracaniem.
+        tree.ooberr: wartosc OOB obliczana dla danego drzewa w przypadku klasyfikacji
+        tree.out_of_bag: numery wierszy out_of_bag nie wykorzystane podczas uczenia danego drzewa
+
+    compare(self, selected_feature_column, value_to_be_compared, value_to_compare)
+        Warunkuje sposob podzialu w node w zaleznosci od typu danych:
+        typ number: <=
+        typ mixed: =
+        Jesli porownywanie wartosci daje wynik:
+        True: dany wiersz dodawany jest do lewego syna
+        False: dany wiersz dodwany jest do prawego syna
+
+    criterium(self, rows, columns)
+
+    gini(self, rows, features)
+        Oblicza index Giniego wg ktorego wybierana jest najlepsza cecha do podzialu w node.
+        Index Giniego nie jest obliczany i funkcja zwraca False (node jest lisciem), 
+        gdy otrzymana zostala czysta klasa decyzyjna (tylko True lub tylko False).
+
+    go_through(self, node, row)
+        Klasyfikacja nowych danych. Przechodzi przez drzewo zaczynajac od korzenia 
+        i zwraca decyzje przechowywana w lisciu (node_decisions).
+
+    insert(self, node)
+        Buduje drzewo rekurencyjnie po przez sprawdzenie warunkow specyficznych dla:
+        regresji: ilosc wierszy w node <= 3
+        klasyfikacji: brak mozliwosci uzyskania czystego podzialu na klasy lub otrzymanie czystego podzialu.
+        Kryterium (self.criterium) podzialu jest wybierane na podstawie wartosci zmiennej 
+        globalnej called_class(regression lub classification). Kryterium zwraca False w przypadku,
+        gdy podzial nie jest mozliwy, node klasyfikowany jest jako lisc i przechowuje decyzje. 
+        W innym przypadku self.criterium zwraca indexes wg ktorego nastapi podzial w tym node.
+
+    major_decision(self, rows)
+        Pobiera wiersze wykorzystywane przez dany Node i porownuje decyzje
+        dla kazdego wiersza z decyzja w permutated_matrix. Oblicza i zwraca decyzje wiekszosciowa
+        w lisciu. Major decision jest obliczane jako suma decyzji True/False, w przypadku regresji
+        suma wartosci. Suma decyzji jest iloscia True. Gdy suma dzielona przez dlugosc > 0.5
+        to decyzja wiekszosciowa == True.
+
+    rss(self, rows, features)
+        Oblicza blad sredniokwadratowy (RSS) w przypadku regresji.
+        Warunkiem zakonczenia podzialow jest liczba wierszy w node < 3.
