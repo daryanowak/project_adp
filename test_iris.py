@@ -1,4 +1,4 @@
-import drzewo_dodana_regresja
+import randomforests
 import numpy
 from sklearn import datasets
 from sklearn.ensemble import RandomForestClassifier
